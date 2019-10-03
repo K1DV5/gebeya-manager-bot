@@ -1,0 +1,18 @@
+{
+  "name": "my-gebeya-bot",
+  "version": "1.0.0",
+  "description": "Bot for my gebeya telegram channel",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "css": "postcss -o out.css foo.css"
+  },
+  "author": "K1DV5",
+  "license": "ISC",
+  "dependencies": {
+    "jimp": "^0.8.4",
+    "mysql": "^2.17.1",
+    "regenerator-runtime": "^0.13.3",
+    "telegraf": "^3.32.0"
+  }
+}
