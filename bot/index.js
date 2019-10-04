@@ -1,9 +1,7 @@
 const mysql = require('mysql')
-const makeCollage = require('collage')
+const makeCollage = require('./collage')
+const methods = require('./methods')
 const Telegraf = require('telegraf')
-
-const CHANNEL = '@mygeb'
-const ADMINS = ['K1DV5']
 
 let connection = mysql.createConnection({
     host: 'localhost',
@@ -27,28 +25,15 @@ function sql(sql, args) {
     })
 }
 
-sql('select * from posts').then(r=>console.log(r))
-
-
-async function handleStart(ctx) {
-    let chatId = ctx.message.chat.id
-    let username = cts.from.username
-    if (ADMINS.includes(username)) {
-        sql('INSERT INTO sessions (chat_id, chat_type, stage) values (?, "admin", ?) ON DUPLICATE KEY UPDATE stage = ?', [chatId, 0, 0])
-        ctx.reply('Welcome, please input /newpost to post a new item.')
-    } else {
-        sql('INSERT INTO sessions (chat_id, stage) VALUES (?, ?) ON DUPLICATE KEY UPDATE stage = ?', [chatId, 0, 0])
-        if (ctx.startPayload) {
-            let messageId = ctx.startPayload
-            let message = await sql('SELECT * FROM posts WHERE message_id = ?', [messageId])[0]
-            ctx.telegram.sendPhoto(chatId, message.image_posted, `${message.title}\n\n${message.body}`)
-            ctx.reply('To buy this item, contact @' + ADMINS[0] + '.')
-            ctx.telegram.sendPhoto(ADMINS[0], message.image_posted, `${message.title}\n\n${message.body}\n\n` + ctx.message.from.username + ' may contact you.')
-        } else {
-            ctx.reply('Welcome, please go to our channel ' + CHANNEL + 'and select Buy on an item.')
-        }
-    }
+const INIT_INFO = {
+    K1DV5: ['@mygeb']
 }
+
+const ADMINS = Object.keys(INIT_INFO)
+const CHANNELS = ['@mygeb']
+
+// methods.updateAdminsChannels()
+console.log(methods)
 
 //const token = '893764106:AAG5W3yWFE4vKL0dsvCo4AfNy-9VaPvl2J4';
 
@@ -91,4 +76,4 @@ async function handleStart(ctx) {
 
 //bot.launch().then(() => console.log('listening')).catch((err)=>{console.log(err.message)})
 
-connection.end()
+ connection.end()
