@@ -36,9 +36,11 @@ bot.start(handlers.handleStart)
 bot.on('callback_query', handlers.handleCallback)
 bot.command('post', handlers.handlePost)
 bot.command('adminadd', handlers.handleAdminAdd)
+bot.command('settings', handlers.handleSettings)
+bot.command('help', handlers.handleHelp)
 bot.on('text', handlers.handleText)
 bot.on('photo', handlers.handlePhotoStage)
-bot.on('document', console.log)
+bot.on('document', handlers.handleDocument)
 
 bot.launch().then(() => console.log('listening...')).catch((err)=>{console.log(err.message)})
 

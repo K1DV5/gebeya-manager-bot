@@ -3,19 +3,11 @@ const https = require('https')
 const fs = require('fs')
 const path = require('path')
 
-async function downloadPhotos(destDir, files, token) {
-    try {
-        await fs.promises.mkdir(destDir, {recursive: true})
-    } catch(err) {
-        console.log('photos.downloadPhotos/catch: ', err.message)
-    }
-    let downloaded = []
-    await Promise.all(files.map(file => {
-        return new Promise((resolve, reject) => {
-            let filePath = path.join(destDir, path.basename(file.file_path))
+function downloadFile(url, filePath) {
+    return new Promise((resolve, reject) => {
+        fs.promises.mkdir(path.dirname(filePath), {recursive: true}).then(() => {
             let fileStream = fs.createWriteStream(filePath)
             fileStream.on('finish', () => {
-                downloaded.push(filePath)
                 fileStream.close()
                 resolve()
             })
@@ -23,7 +15,6 @@ async function downloadPhotos(destDir, files, token) {
                 fs.unlink(filePath, () => reject(err))
             })
 
-            let url = `https://api.telegram.org/file/bot${token}/${file.file_path}`
             https.get(url, response => {
                 if (response.statusCode === 200) {
                     response.pipe(fileStream)
@@ -34,16 +25,28 @@ async function downloadPhotos(destDir, files, token) {
                 fs.unlink(fileStream)
                 reject(err)
             })
-        })
-    }))
+        }).catch(err => console.log('photos.downloadFile/catch: ', err.message))
+    })
+}
+
+async function downloadPhotos(destDir, files, token) {
+    let downloaded = []
+    if (files.constructor === Array) {
+        await Promise.all(files.map(async file => {
+            let filePath = path.join(destDir, path.basename(file.file_path))
+            let url = `https://api.telegram.org/file/bot${token}/${file.file_path}`
+            await downloadFile(url, filePath)
+            downloaded.push(filePath)
+        }))
+    }
     return downloaded
 }
 
 function watermarkProps(width, height, proportion = 0.2) {
     let watermarkPos = 1 - proportion
     return {
-        x: width * watermarkPos - 40,
-        y: height * watermarkPos - 40,
+        x: width * watermarkPos - width*0.1,
+        y: height * watermarkPos - width*0.1,
         w: width * proportion,
         h: height * proportion
     }
@@ -94,15 +97,17 @@ function arrange(total, width) {
 }
 
 async function watermark(image, dest, watermarkImg) {
-    if (typeof image === 'string') {
-        image = await Jimp.read(image)
-    }
-    watermarkImg = await Jimp.read(watermarkImg)
-    let props = watermarkProps(image.bitmap.width, image.bitmap.height)
-    await watermarkImg.contain(props.w, props.h, Jimp.HORIZONTAL_ALIGN_RIGHT | Jimp.VERTICAL_ALIGN_BOTTOM)
-    await image.composite(watermarkImg, props.x, props.y)
-    if (dest) {
-        image.write(dest)
+    if (watermarkImg) {
+        if (typeof image === 'string') {
+            image = await Jimp.read(image)
+        }
+        watermarkImg = await Jimp.read(watermarkImg)
+        let props = watermarkProps(image.bitmap.width, image.bitmap.height)
+        await watermarkImg.contain(props.w, props.h, Jimp.HORIZONTAL_ALIGN_RIGHT | Jimp.VERTICAL_ALIGN_BOTTOM)
+        await image.composite(watermarkImg, props.x, props.y)
+        if (dest) {
+            image.write(dest)
+        }
     }
 }
 
@@ -125,11 +130,7 @@ async function makeCollage(sources, dest, watermarkImg = undefined, width = 1024
         collage.composite(image, props.x, props.y)
     }
     if (watermarkImg) {
-        try {
-            await watermark(collage, null, watermarkImg)
-        } catch {
-            console.log('Error on watermark image')
-        }
+        await watermark(collage, null, watermarkImg)
     }
     collage.write(dest)
 }
@@ -146,6 +147,7 @@ async function rmdirWithFiles(dir) {
 module.exports = {
     makeCollage,
     watermarkDir,
+    downloadFile,
     downloadPhotos,
     rmdirWithFiles
 }
