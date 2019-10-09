@@ -88,14 +88,20 @@ async function handleStart(ctx) {
                                         ON p.channel = c.username
                                     INNER JOIN people AS a
                                         ON c.admin = a.username
-                                    WHERE message_id = ?`,
-                [messageIdDb]))[0]
+                                    WHERE message_id = ?`, [messageIdDb]))[0]
 
             // to the customer
-            let contactText = (await SQL('SELECT contact_text FROM channels WHERE username = ?',
-                [channel]))[0].contact_text
-            let text = 'You have selected ' + itemLink + ' from @' + channel +  '.\n' + contactText
-            ctx.reply(text, {
+            let query = `SELECT p.caption, p.image_ids AS images, c.contact_text AS contactText
+                                FROM posts
+                                INNER JOIN channels
+                                    ON c.username = p.channel
+                                WHERE p.message_id = ?`
+            let postData = (await SQL(query, [channel]))[0]
+            let caption = '<i>You have selected</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n' + postData.caption + '\n\n' + postData.contactText
+            let collage = postData.images.collage
+            ctx.replyWithPhoto(collage, {
+                caption,
+                disable_web_page_preview: true,
                 parse_mode: 'html',
                 reply_markup: {
                     inline_keyboard: [
@@ -109,9 +115,11 @@ async function handleStart(ctx) {
 
             // to the person
             let customerLink = `<a href="tg://user?id=${userId}">customer</a>`
-            text = `You have a ${customerLink} who wants to buy ${itemLink} from @${channel}. They may contact you.`
-            ctx.telegram.sendMessage(person.chat_id, text, {
+            caption = `<i>You have a</i> ${customerLink} <i>who wants to buy</i> ${itemLink} <i>from</i> @${channel}. <i>They may contact you</i>.\n\n` + postData.caption
+            ctx.telegram.sendPhoto(person.chat_id, collage, {
+                caption,
                 parse_mode: 'html',
+                disable_web_page_preview: true,
                 reply_markup: {
                     inline_keyboard: [
                         [
@@ -170,7 +178,7 @@ async function handlePost(ctx) {
         // prepare choices
         let channels = (await SQL('SELECT c.username FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])).map(ch => ch.username)
         if (channels.length === 1) {
-            SQL('UPDATE people SET draft_channel = ?, conversation = ? WHERE username = ?',
+            SQL('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
                 [channels[0], 'post.title', username])
             ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
         } else {
@@ -194,7 +202,7 @@ async function handleChannelStage(ctx) {
         let licenseExpiry = (await SQL('SELECT license_expiry FROM channels WHERE username = ?',
             [channel]))
         if (licenseExpiry > ctx.message.date) {
-            SQL('UPDATE people SET draft_channel = ?, conversation = ? WHERE username = ?',
+            SQL('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
                 [channel, 'post.title', username])
             let chatId = ctx.update.callback_query.from.id
             let messageId = ctx.message.message_id
@@ -235,18 +243,18 @@ function handlePriceStage(ctx) {
 async function draftToPostable(username) {
     let query = `SELECT p.username,
                         p.chat_id,
-                        p.draft_channel AS channel,
+                        p.draft_destination AS destination,
                         p.draft_title AS title,
                         p.draft_description AS description,
                         p.draft_price as price,
                         p.draft_image_ids AS images,
                         p.preview_post_message_id as previewId,
-                        p.preview_removed_message_ids as removedIds,
+                        p.removed_message_ids as removedIds,
                         p.conversation as stage,
                         c.caption_template AS template
                  FROM people AS p
                  INNER JOIN channels AS c
-                    ON c.username = p.draft_channel
+                    ON c.username = p.draft_destination
                  WHERE p.username = ?`
     let adminData = (await SQL(query, [username]))[0]
     if (adminData) {
@@ -274,7 +282,7 @@ async function handlePhotoStage(ctx) {
                 filesToDown.push(await ctx.telegram.getFile(photo.file_id))
             }
             let imagesDir = path.join(IMAGE_STAGING_DIR, username, 'draft-images')
-            let channel = (await SQL('SELECT draft_channel FROM people WHERE username = ?', [username]))[0].draft_channel
+            let channel = (await SQL('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination
             let logoImg = path.join(IMAGE_STAGING_DIR, username, 'logo-' + channel + '.png')
             try {
                 await fs.promises.stat(logoImg) // check if it exists
@@ -321,7 +329,7 @@ async function handlePhotoStage(ctx) {
                 collage: postPreview.photo.slice(-1)[0].file_id,
                 watermarked: previewImages.map(msg => msg.photo.slice(-1)[0].file_id)
             }
-            SQL('UPDATE people SET draft_image_ids = ?, preview_post_message_id = ?, preview_removed_message_ids = ?, conversation = ? WHERE username = ?', [
+            SQL('UPDATE people SET draft_image_ids = ?, preview_post_message_id = ?, removed_message_ids = ?, conversation = ? WHERE username = ?', [
                 JSON.stringify(imageIds),
                 postPreview.message_id,
                 JSON.stringify(removedAtPost),
@@ -341,7 +349,7 @@ async function handlePhotoStage(ctx) {
 async function handlePostDraft(ctx) {
     let adminData = (await draftToPostable(ctx.from.username))
     if (adminData.stage === 'post.ready') {
-        let channel = adminData.channel
+        let channel = adminData.destination
         let message = await ctx.telegram.sendPhoto('@' + channel, adminData.images.collage, {caption: adminData.caption})
         let newMessageIdDb = channel + '/' + message.message_id
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + newMessageIdDb.replace('/', '-')
@@ -365,14 +373,19 @@ async function handlePostDraft(ctx) {
             }}
         )
         // record the post
-        SQL('INSERT INTO posts (message_id, channel, caption, image_ids) VALUES (?, ?, ?, ?)',
-            [newMessageIdDb, channel, adminData.caption, JSON.stringify(adminData.images)])
+        SQL('INSERT INTO posts (message_id, channel, title, description, price, caption, image_ids) VALUES (?, ?, ?, ?, ?, ?, ?)', [newMessageIdDb,
+                                             channel,
+                                             adminData.title,
+                                             adminData.description,
+                                             adminData.price,
+                                             adminData.caption,
+                                             JSON.stringify(adminData.images)])
         // clean up the person draft
         SQL(`UPDATE people SET draft_title = NULL,
                                draft_description = NULL,
-                               draft_channel = NULL,
+                               draft_destination = NULL,
                                draft_image_ids = NULL,
-                               preview_removed_message_ids = NULL,
+                               removed_message_ids = NULL,
                                preview_post_message_id = NULL
              WHERE username = ?`, [adminData.username])
     } else {
@@ -404,11 +417,12 @@ async function handleDiscardDraft(ctx) {
     // clean up the person draft
     SQL(`UPDATE people SET draft_title = NULL,
                            draft_description = NULL,
-                           draft_channel = NULL,
+                           draft_destination = NULL,
                            draft_image_ids = NULL,
-                           preview_removed_message_ids = NULL,
-                           preview_post_message_id = NULL
-        WHERE username = ?`, [adminData.username])
+                           removed_message_ids = NULL,
+                           preview_post_message_id = NULL,
+                           conversation = NULL
+         WHERE username = ?`, [adminData.username])
     ctx.reply('Draft discarded.')
 }
 
@@ -583,54 +597,90 @@ async function handleEditPost(ctx) {
     let stage = (await SQL('SELECT conversation FROM people WHERE username = ?', [username]))[0].conversation
     if (stage === 'edit.title') {
         let text = ctx.update.message.text
-        if (text.trim() !== 'skip') {
-            SQL('UPDATE people SET draft_title = ?, conversation = "edit.description" WHERE username = ?', [text, username])
-            ctx.reply('Send the new description. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
+        if (text.trim() === 'skip') {
+            let query = `UPDATE people
+                            SET draft_title = (SELECT title FROM posts WHERE message_id = people.draft_destination),
+                            conversation = "edit.description"
+                         WHERE username = ?`
+            SQL(query, [username])
         } else {
-            SQL('UPDATE people SET ')
+            SQL('UPDATE people SET draft_title = ?, conversation = "edit.description" WHERE username = ?', [text, username])
         }
+        ctx.reply('Send the new description. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
     } else if (stage === 'edit.description') {
         let text = ctx.update.message.text
-        if (text.trim() !== 'skip') {
+        if (text.trim() === 'skip') {
+            let query = `UPDATE people
+                            SET draft_description = (SELECT description FROM posts WHERE message_id = people.draft_destination),
+                            conversation = "edit.price"
+                         WHERE username = ?`
+            SQL(query, [username])
+        } else {
             SQL('UPDATE people SET draft_destination = ?, conversation = "edit.price" WHERE username = ?', [text, username])
-            ctx.reply('Send the new price. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
         }
+        ctx.reply('Send the new price. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
     } else if (stage === 'edit.price') {
         let text = ctx.update.message.text
-        if (text.trim() !== 'skip') {
-            await SQL('UPDATE people SET draft_price = ?, conversation = "edit.ready" WHERE username = ?', [text, username])
-            let caption = await draftToPostable(username)
-            ctx.reply('Send the new description. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
-        }
-    } else if (stage === 'edit.ready') {
-        let input = ctx.update.callback_query
-        let messageIdDb = input.data
-        let postExists = (await SQL(query, [messageIdDb]))[0]
-        if (postExists) {
-            SQL('UPDATE people SET conversation = "edit.title", draft_destination = ? WHERE username = ?', [messageIdDb, username])
-            let chatId = ctx.update.callback_query.from.id
-            let messageId = ctx.update.callback_query.message.message_id
-            ctx.telegram.editMessageReplyMarkup(chatId, messageId, undefined, {
-                inline_keyboard: [
-                    [ { text: 'Buy', url: startUrl } ]
-                ]
-            })
+        if (text.trim() === 'skip') {
+            let query = `UPDATE people
+                            SET draft_price = (SELECT price FROM posts WHERE message_id = people.draft_destination),
+                                conversation = "edit.ready"
+                         WHERE username = ?`
+            await SQL(query, [username])
         } else {
-            ctx.reply('Sorry, not found')
+            await SQL('UPDATE people SET draft_price = ?, conversation = "edit.ready" WHERE username = ?', [text, username])
         }
+        let adminData = await draftToPostable(username)
+        let collage = adminData.images.collage
+        let caption = '<i>The new caption will look like this...</i>\n\n' + adminData.caption
+        let message = await ctx.replyWithPhoto(collage, {
+                parse_mode: 'html',
+                caption, reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: 'Save changes', callback_data: 'edit:save.' + username },
+                            { text: 'Discard', callback_data: 'edit:discard.' + username }
+                        ]
+                    ]
+                }})
+        let removedIds = adminData.removedIds
+        removedIds.preview = message.message_id
+        SQL(`UPDATE people SET removed_message_ids = ?  conversation = "edit.ready"
+                           WHERE username = ?`, [JSON.stringify(removedIds), username] )
+    } else if (stage === 'edit.ready') {
+        let adminData = await draftToPostable(username)
+        SQL(`UPDATE people SET draft_title = NULL,
+                               draft_description = NULL,
+                               draft_destination = NULL,
+                               draft_image_ids = NULL,
+                               removed_message_ids = NULL,
+                               preview_post_message_id = NULL,
+                               conversation = NULL
+             WHERE username = ?`, [adminData.username])
+        let input = ctx.update.callback_query
+        let command = input.data.slice(0, input.data.indexOf('.'))
+        let chatId = ctx.update.callback_query.from.id
+        let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
+        let deletedMessage
+        if (command === 'save') {
+            deletedMessage = adminData.removedIds.editOrigin
+            ctx.telegram.editMessageCaption(adminData.caption, [[ { text: 'Buy', url: startUrl } ]])
+            ctx.reply('Post updated.')
+        } else {
+            deletedMessage = adminData.removedIds.preview
+            ctx.reply('Editting cancelled.')
+        }
+        ctx.telegram.deleteMessage(chatId, deletedMessage)
     } else {
         let input = ctx.update.callback_query
         let messageIdDb = input.data
         let postExists = (await SQL(query, [messageIdDb]))[0]
         if (postExists) {
-            SQL('UPDATE people SET conversation = "edit.title", draft_destination = ? WHERE username = ?', [messageIdDb, username])
-            let chatId = ctx.update.callback_query.from.id
             let messageId = ctx.update.callback_query.message.message_id
-            ctx.telegram.editMessageReplyMarkup(chatId, messageId, undefined, {
-                inline_keyboard: [
-                    [ { text: 'Buy', url: startUrl } ]
-                ]
-            })
+            SQL('UPDATE people SET conversation = "edit.title", draft_destination = ?, removed_message_ids = ? WHERE username = ?', [messageIdDb, JSON.stringify({editOrigin: messageId}), username])
+            let postUrl = 'https://t.me/' + messageIdDb
+            let text = 'Editting <a href="' + postUrl + '">this post</a>, write the new title. You can send <b>skip</b> To keep the existing title.'
+            ctx.reply(text)
         } else {
             ctx.reply('Sorry, not found')
         }

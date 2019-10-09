@@ -1,6 +1,6 @@
 /* DATA MODEL FOR THE BOT */
 
-DROP TABLE IF EXISTS posts, post_permissions, channels, people;
+DROP TABLE IF EXISTS posts, channels, people;
 
 /* admins of channels */
 CREATE TABLE people (username VARCHAR(255) PRIMARY KEY,
@@ -10,9 +10,9 @@ CREATE TABLE people (username VARCHAR(255) PRIMARY KEY,
                      draft_price VARCHAR(255) DEFAULT '[Not given]',
                      /* json encoded object of image ids {"collage": *, "watermarked": [*]} */
                      draft_image_ids VARCHAR(3000),
-                     draft_destination VARCHAR(255), /* where the post will be */
+                     draft_destination VARCHAR(255), /* where the post will be (channel or channel/message_id) */
                      /* the replied images album and photo message ids, so that they can be removed when posting */
-                     preview_removed_message_ids VARCHAR(255),
+                     removed_message_ids VARCHAR(255),
                      preview_post_message_id VARCHAR(255),
                      settings_channel VARCHAR(255),
                      conversation VARCHAR(255) /* where the person is in the conversation */
@@ -23,7 +23,7 @@ CREATE TABLE channels (username VARCHAR(255) PRIMARY KEY,
                        admin VARCHAR(255),
                        contact_text VARCHAR(255),
                        caption_template VARCHAR(1024) DEFAULT ':title\n\n:description\n\nPrice: :price',
-                       sold_template VARCHAR(1024) DEFAULT '=== SOLD ===\n\n:caption\n\n=== SOLD ===',
+                       sold_template VARCHAR(1024) DEFAULT '===< SOLD >===\n\n:caption\n\n===< SOLD >===',
                        license_expiry VARCHAR(255),
                        FOREIGN KEY (admin) REFERENCES people(username)
 );
