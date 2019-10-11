@@ -64,7 +64,7 @@ function downloadFile(url, filePath) {
             } else {
                 reject(response.statusCode)
             }
-        }).on('error', () => {fs.promises.unlink(fileStream); reject()})
+        }).on('error', () => {fs.promises.unlink(filePath); reject()})
     })
 }
 
@@ -184,23 +184,40 @@ async function rmdirWithFiles(dir) {
     fs.promises.rmdir(dir)
 }
 
-async function draftToPostable(username, queryFunc) {
-    let query = `SELECT p.username,
-                        p.chat_id,
-                        p.draft_destination AS destination,
-                        p.draft_title AS title,
-                        p.draft_description AS description,
-                        p.draft_price as price,
-                        p.draft_image_ids AS images,
-                        p.preview_post_message_id as previewId,
-                        p.removed_message_ids as removedIds,
-                        p.conversation as stage,
-                        c.caption_template AS template
-                 FROM people AS p
-                 INNER JOIN channels AS c
-                    ON c.username = p.draft_destination
-                 WHERE p.username = ?`
-    let adminData = (await queryFunc(query, [username]))[0]
+async function draftToPostable(username, queryFunc, type) {
+    let adminData
+    if (type === undefined) { // general
+        let query = `SELECT p.username,
+                            p.chat_id,
+                            p.draft_destination AS destination,
+                            p.draft_title AS title,
+                            p.draft_description AS description,
+                            p.draft_price as price,
+                            p.draft_image_ids AS images,
+                            p.preview_post_message_id as previewId,
+                            p.removed_message_ids as removedIds,
+                            p.conversation as stage,
+                            c.caption_template AS template
+                     FROM people AS p
+                     INNER JOIN channels AS c
+                        ON c.username = p.draft_destination
+                     WHERE p.username = ?`
+        adminData = (await queryFunc(query, [username]))[0]
+    } else if (type === 'edit') { // for the edit caption functionality
+        // get the channel's caption template
+        let channel = (await queryFunc('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination.split('/')[0]
+        let captionTemplate = (await queryFunc('SELECT caption_template FROM channels WHERE username = ?', [channel]))[0].caption_template
+        let query = `SELECT draft_destination as destination,
+                            draft_title AS title,
+                            draft_description AS description,
+                            draft_price AS price,
+                            draft_image_ids AS images,
+                            removed_message_ids as removedIds,
+                            conversation AS stage
+                     FROM people WHERE username = ?`
+        adminData = (await queryFunc(query, [username]))[0]
+        adminData.template = captionTemplate
+    }
     if (adminData) {
         adminData.caption = adminData.template
             .replace(/:title\b/, adminData.title)
@@ -220,5 +237,6 @@ module.exports = {
     watermarkDir,
     downloadFile,
     downloadPhotos,
-    rmdirWithFiles
+    rmdirWithFiles,
+    makeKeyboardTiles
 }

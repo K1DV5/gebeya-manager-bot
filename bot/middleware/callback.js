@@ -15,11 +15,9 @@ function handleCallback(ctx) {
         'sold:': sold,
         'repost:': repost,
         'edit:': ctx => {ctx.state.stage = null; edit(ctx)},
+        'edit.after:': edit, // after some changs are made, save or discard
         'delete:': del,
-        'settings.logo:': settings,
-        'settings.caption_template:': settings,
-        'settings.sold_template:': settings,
-        'settings.contact_text:': settings,
+        'settings:': settings,
     }
     for (let [prefix, handler] of Object.entries(prefixes)) {
         if (callbackData.slice(0, prefix.length) === prefix) {

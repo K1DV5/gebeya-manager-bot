@@ -14,7 +14,7 @@ async function handleAdminAdd(ctx) {
                      ON DUPLICATE KEY UPDATE admin = VALUES(admin),
                                              license_expiry = VALUES(license_expiry),
                                              contact_text = CONCAT("To buy this item, contact @", VALUES(admin), ".")`,
-                    [args.c, args.u, licenseExpiry.getTime()])
+                    [args.c, args.u, licenseExpiry.getTime()/1000]) // by 1000 to convert to seconds
                 ctx.reply(`New channel @${args.c} by @${args.u} added, license expiring on ${licenseExpiry.toString()}`)
             } else {
                 ctx.reply('Necessary arguments not given: -u, -c, -e, -p')

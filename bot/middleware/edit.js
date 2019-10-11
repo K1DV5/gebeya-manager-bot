@@ -32,15 +32,12 @@ async function handleEditPost(ctx) {
         if (text.trim() === 'skip') {
             let query = `UPDATE people
                             SET draft_price = (SELECT price FROM posts WHERE message_id = people.draft_destination),
-                                conversation = "edit.ready",
                          WHERE username = ?`
-            // await ctx.state.sql(query, [username])
+            await ctx.state.sql(query, [username])
         } else {
-            // await ctx.state.sql('UPDATE people SET draft_price = ?, conversation = "edit.ready" WHERE username = ?', [text, username])
+            await ctx.state.sql('UPDATE people SET draft_price = ? WHERE username = ?', [text, username])
         }
-        let adminData = await draftToPostable(username, ctx.state.sql)
-        console.log(adminData)
-        return
+        let adminData = await draftToPostable(username, ctx.state.sql, 'edit')
         let collage = adminData.images.collage
         let caption = '<i>The new caption will look like this...</i>\n\n' + adminData.caption
         let message = await ctx.replyWithPhoto(collage, {
@@ -48,17 +45,17 @@ async function handleEditPost(ctx) {
                 caption, reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: 'Save changes', callback_data: 'edit:save.' + username },
-                            { text: 'Discard', callback_data: 'edit:discard.' + username }
+                            { text: 'Save changes', callback_data: 'edit.after:save' },
+                            { text: 'Discard', callback_data: 'edit.after:discard' }
                         ]
                     ]
                 }})
         let removedIds = adminData.removedIds
         removedIds.preview = message.message_id
-        ctx.state.sql(`UPDATE people SET removed_message_ids = ?  conversation = "edit.ready"
+        ctx.state.sql(`UPDATE people SET removed_message_ids = ?, conversation = "edit.ready"
                            WHERE username = ?`, [JSON.stringify(removedIds), username] )
     } else if (stage === 'edit.ready') {
-        let adminData = await draftToPostable(username, ctx.state.sql)
+        let adminData = await draftToPostable(username, ctx.state.sql, 'edit')
         ctx.state.sql(`UPDATE people SET draft_title = NULL,
                               draft_description = NULL,
                               draft_destination = NULL,
@@ -66,16 +63,30 @@ async function handleEditPost(ctx) {
                               removed_message_ids = NULL,
                               preview_post_message_id = NULL,
                               conversation = NULL
-             WHERE username = ?`, [adminData.username])
+             WHERE username = ?`, [username])
         let input = ctx.update.callback_query
-        let command = input.data.slice(0, input.data.indexOf('.'))
         let chatId = ctx.update.callback_query.from.id
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
+        let [channel, postId] = adminData.destination.split('/')
         let deletedMessage
-        if (command === 'post_editted') {
+        if (input.data === 'save') {
             deletedMessage = adminData.removedIds.editOrigin
-            ctx.telegram.editMessageCaption(adminData.caption, [[ { text: 'Buy', url: startUrl } ]])
-            ctx.reply('Post updated.')
+            // edit the post
+            ctx.telegram.editMessageCaption('@' + channel, postId, undefined, adminData.caption, {
+                reply_markup: {
+                    inline_keyboard: [[{ text: 'Buy', url: startUrl }]]
+                }
+            })
+            // edit the final message
+            let itemLink = '<a href="https://t.me/' + adminData.destination + '">this item</a>'
+            let caption = '<i>Editted the caption of</i> ' + itemLink + '.\n\n' + adminData.caption
+            ctx.telegram.editMessageCaption(chatId, adminData.removedIds.preview, undefined, caption, {
+                parse_mode: 'html',
+                disable_web_page_preview: true,
+                reply_markup: {
+                    inline_keyboard: [[{ text: 'Edit caption', callback_data: 'edit:' + adminData.destination }]]
+                }
+            })
         } else {
             deletedMessage = adminData.removedIds.preview
             ctx.reply('Editting cancelled.')
@@ -95,7 +106,7 @@ async function handleEditPost(ctx) {
                             WHERE username = ?`, [messageIdDb, JSON.stringify({editOrigin: messageId}), username])
             let postUrl = 'https://t.me/' + messageIdDb
             let text = 'Editting <a href="' + postUrl + '">this post</a>, write the new title. You can send <b>skip</b> To keep the existing title.'
-            ctx.reply(text, {parse_mode: 'html'})
+            ctx.reply(text, {parse_mode: 'html', disable_web_page_preview: true})
         } else {
             ctx.reply('Sorry, not found')
         }

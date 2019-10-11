@@ -2,7 +2,7 @@
 async function handleDetails(ctx) {  // details callback
     let messageIdDb = ctx.update.callback_query.data
     let messageDetails = (await ctx.state.sql('SELECT * FROM posts WHERE message_id = ?', [messageIdDb]))[0]
-    if (messageDetails) {
+    if (messageDetails && messageDetails.state === 'available') {
         // let person = (await ctx.state.sql(`SELECT a.username
         //                         FROM posts AS p
         //                         INNER JOIN channels AS c
@@ -27,8 +27,12 @@ async function handleDetails(ctx) {  // details callback
             //         ]
             // }
         })
-    } else {
+    } else if (messageDetails.state === 'sold') {
+        ctx.reply('Sorry, item already sold.')
+    } else if (messageDetails.status === 'deleted') {
         ctx.reply('Details not found')
+    } else {
+        ctx.reply(ctx.state.fallbackReply)
     }
 }
 

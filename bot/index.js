@@ -33,7 +33,7 @@ const bot = new Telegraf(token)
 bot.use(async (ctx, next) => { // set necessary variables
     ctx.state.sql = queryDb
     ctx.state.admins = SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES
-    ctx.state.fallbackReply = 'Error, don\'t know what you want. Maybe you need /help'
+    ctx.state.fallbackReply = 'Error, don\'t know what you want to do. Maybe you need /help'
     ctx.state.imagesDir = '../images-staging'
     let channelAdmins = (await queryDb('SELECT username FROM people')).map(p => p.username)
     let from = ctx.from.username
@@ -45,14 +45,15 @@ bot.use(async (ctx, next) => { // set necessary variables
 })
 
 bot.start(               require('./middleware/start'))
-bot.on('callback_query', require('./middleware/callback'))
 bot.command('post',      require('./middleware/post'))
 bot.command('adminadd',  require('./middleware/admin'))
 bot.command('settings',  require('./middleware/settings'))
 bot.command('help',      require('./middleware/help'))
+bot.command('license',   require('./middleware/license'))
 bot.on('text',           require('./middleware/text'))
 bot.on('photo',          require('./middleware/post'))
 bot.on('document',       require('./middleware/document'))
+bot.on('callback_query', require('./middleware/callback'))
 
 bot.launch().then(() => console.log('listening...')).catch((err)=>{console.log(err.message)})
 

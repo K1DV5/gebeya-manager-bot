@@ -23,7 +23,7 @@ CREATE TABLE channels (username VARCHAR(255) PRIMARY KEY,
                        admin VARCHAR(255),
                        contact_text VARCHAR(255),
                        caption_template VARCHAR(1024) DEFAULT ':title\n\n:description\n\nPrice: :price',
-                       sold_template VARCHAR(1024) DEFAULT '===< SOLD >===\n\n:caption\n\n===< SOLD >===',
+                       sold_template VARCHAR(1024) DEFAULT '===( SOLD )===\n\n:caption\n\n===( SOLD )===',
                        license_expiry VARCHAR(255),
                        FOREIGN KEY (admin) REFERENCES people(username)
 );
@@ -38,6 +38,9 @@ CREATE TABLE posts (message_id VARCHAR(255) PRIMARY KEY,
                     caption VARCHAR(3000), /* the caption shown to the customer */
                     /* json encoded list of image ids, the first is the collage */
                     image_ids VARCHAR(3000),
+                    post_date VARCHAR(128),
+                    sold_date VARCHAR(128),
+                    marked_sold INT DEFAULT 0,
                     state VARCHAR(255) DEFAULT 'available',  /* or 'sold' */
                     FOREIGN KEY (channel) REFERENCES channels(username)
 );
@@ -47,6 +50,11 @@ DELIMITER //
 CREATE TRIGGER default_contact_text BEFORE INSERT ON channels FOR EACH ROW BEGIN
     IF (NEW.contact_text IS NULL) THEN
         SET NEW.contact_text = CONCAT("To buy this item, contact @", NEW.admin, '.');
+    END IF;
+END //
+CREATE TRIGGER sale_count BEFORE UPDATE ON posts FOR EACH ROW BEGIN
+    IF (NEW.state = 'sold') THEN
+        SET NEW.marked_sold = OLD.marked_sold + 1;
     END IF;
 END //
 DELIMITER ;

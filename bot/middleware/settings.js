@@ -1,28 +1,25 @@
 const {makeKeyboardTiles} = require('../utils')
+const handleDoc = require('./document')
 
 function settings(ctx) {
     if (ctx.state.isAdmin) {
         let stage = ctx.state.stage
-        if (stage === 'settings') {
-            handleSettingIntro(ctx)
-        } else if (stage === 'settings.logo.channel') {
-            handleSettingChannel(ctx)
-        } else if (stage === 'settings.logo.document') {
-
-        } else if (stage === 'settings.caption_template.channel') {
-            handleSettingChannel(ctx)
-        } else if (stage === 'settings.caption_template.text') {
-            handleSettingText(ctx)
-        } else if (stage === 'settings.sold_template.channel') {
-            handleSettingChannel(ctx)
-        } else if (stage === 'settings.sold_template.text') {
-            handleSettingText(ctx)
-        } else if (stage === 'settings.contact_text.channel') {
-            handleSettingChannel(ctx)
-        } else if (stage === 'settings.contact_text.text') {
-            handleSettingText(ctx)
-        } else {
-            handleSettings(ctx)
+        if (ctx.update.message) {
+            if (ctx.update.message.text) {
+                if (ctx.update.message.text === '/settings') {
+                    handleSettings(ctx)
+                } else {
+                    handleSettingText(ctx)
+                }
+            } else if (ctx.update.message.document) {
+                handleDoc(ctx)
+            }
+        } else if (ctx.update.callback_query) {
+            if (stage === 'settings') {
+                handleSettingIntro(ctx)
+            } else {
+                handleSettingChannel(ctx)
+            }
         }
     } else {
         ctx.reply('You are not registered here as an admin of any channel.')
@@ -32,18 +29,18 @@ function settings(ctx) {
 async function handleSettings(ctx) {
     let username = ctx.from.username
     ctx.state.sql('UPDATE people SET conversation = "settings" WHERE username = ?', [username])
-    let licences = (await ctx.state.sql('SELECT c.license_expiry FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])).map(l=>l.license_expiry)
-    if (licences.some(expire => expire > ctx.message.date)) {
+    let hasValidChannels = (await ctx.state.sql('SELECT c.license_expiry FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])).some(l=>l.license_expiry*1 > ctx.update.message.date)
+    if (hasValidChannels) {
         ctx.reply('What do you want to change?', {
             reply_markup: {
                 inline_keyboard: [
                     [
-                        { text: 'Logo', callback_data: 'settings.logo:' },
-                        { text: 'Contact text', callback_data: 'settings.contact_text:' }
+                        { text: 'Logo', callback_data: 'settings:logo' },
+                        { text: 'Contact text', callback_data: 'settings:contact_text' }
                     ],
                     [
-                        { text: 'Caption template', callback_data: 'settings.caption_template:' },
-                        { text: 'Sold template', callback_data: 'settings.sold_template:' }
+                        { text: 'Caption template', callback_data: 'settings:caption_template' },
+                        { text: 'Sold template', callback_data: 'settings:sold_template' }
                     ]
                 ]
             }
@@ -73,16 +70,18 @@ const settingSpectficChannelParams = {
         next: 'settings.sold_template.text',
         text: async (ctx, channel) => {
             let currentTemplate = (await ctx.state.sql('SELECT sold_template FROM channels WHERE username = ?', [channel]))[0].sold_template
-            let text = '<i>You will be changing the template of the text shown when the item is sold from</i> @' + channel + ', <i>here is the current template, you can edit anything except</i> <b>:caption</b>. <i>It is a placeholder for the caption.</i>\n\n' + currentTemplate
-                .replace(/:caption\b/, '<b>:caption</b>')
+            let text = '<i>You will be changing the template of the text shown when the item is sold from</i> @'
+                       + channel
+                       + ', <i>here is the current template, you can edit anything except</i> <b>:caption</b>. <i>It is a placeholder for the caption.</i>\n\n'
+                       + currentTemplate.replace(/:caption\b/, '<b>:caption</b>')
             return text
         }
     },
     contact_text: {
-        next: 'settings.sold_template.text',
+        next: 'settings.contact_text.text',
         text: async (ctx, channel) => {
             let currentText = (await ctx.state.sql('SELECT contact_text FROM channels WHERE username = ?', [channel]))[0].contact_text
-            let text = '<i>You will be changing the template of the text shown when the item is sold from</i> @' + channel + ', <i>here is the current template, you can edit anything except</i> <b>:caption</b>. <i>It is a placeholder for the caption.</i>\n\n' + currentText
+            let text = '<i>You will be changing the text shown below the caption when a customer selects "Buy" from</i> @' + channel + ', <i>here is the current text. You can include additional info like phone numbers and so on.</i>\n\n' + currentText
             return text
         }
     }
@@ -91,44 +90,53 @@ const settingSpectficChannelParams = {
 const settingSpectficIntroParams = {
     logo: {
         text: 'Which channel\'s logo do you want to change?',
-        next: 'settings.logo.channel'
+        next: 'settings:logo.'
     },
     caption_template: {
         text: 'Which channel\'s caption template do you want to change?',
-        next: 'settings.caption_template.channel'
+        next: 'settings:caption_template.'
     },
     sold_template: {
         text: 'Which channel\'s sold template do you want to change?',
-        next: 'settings.sold_template.channel'
+        next: 'settings:sold_template.'
     },
     contact_text: {
         text: 'Which channel\'s contact text do you want to change?',
-        next: 'settings.contact_text.channel'
+        next: 'settings:contact_text.'
     }
 }
 
 
 async function handleSettingIntro(ctx) {
     let username = ctx.from.username
-    let currentOne = settingSpectficIntroParams[ctx.state.stage.split('.')[1]]
-    ctx.state.sql('UPDATE people SET conversation = ? WHERE username = ?', [currentOne.next, username])
-    let channels = (await ctx.state.sql('SELECT c.username FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])).map(ch => ch.username)
-    let buttons = channels.map(ch => {return {text: '@' + ch, callback_data: currentOne.next.replace('.channel', '') + ':' + ch}})
-    let keyboard = makeKeyboardTiles(buttons)
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
-    let text = currentOne.text
-    ctx.telegram.editMessageText(chatId, messageId, undefined, text, {
-        reply_markup: {
-            inline_keyboard: keyboard,
-        }
-    })
+    let type = ctx.update.callback_query.data
+    let currentOne = settingSpectficIntroParams[type]
+    ctx.state.sql('UPDATE people SET conversation = ? WHERE username = ?', [currentOne.next, username])
+    let channels = (await ctx.state.sql('SELECT c.license_expiry, c.username FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])).filter(l=>l.license_expiry*1 > ctx.update.callback_query.message.date).map(ch => ch.username)
+    if (channels.length > 1) {
+        let buttons = channels.map(ch => {return {text: '@' + ch, callback_data: currentOne.next + ch}})
+        let keyboard = makeKeyboardTiles(buttons)
+        let text = currentOne.text
+        ctx.telegram.editMessageText(chatId, messageId, undefined, text, {
+            reply_markup: {
+                inline_keyboard: keyboard,
+            }
+        })
+    } else if (channels.length === 1) { // auto select the first one and bypass the channel selection
+        currentOne = settingSpectficChannelParams[type]
+        let channel = channels[0]
+        ctx.state.sql('UPDATE people SET settings_channel = ?, conversation = ? WHERE username = ?', [channel, currentOne.next, username])
+        let text = await currentOne.text(ctx, channel)
+        ctx.telegram.editMessageText(chatId, messageId, undefined, text, {parse_mode: 'html'})
+    }
 }
 
 async function handleSettingChannel(ctx) {
     let username = ctx.from.username
-    let channel = ctx.update.callback_query.data
-    let currentOne = settingSpectficChannelParams[ctx.state.stage.split('.')[1]]
+    let [type, channel] = ctx.update.callback_query.data.split('.')
+    let currentOne = settingSpectficChannelParams[type]
     ctx.state.sql('UPDATE people SET settings_channel = ?, conversation = ? WHERE username = ?', [channel, currentOne.next, username])
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
@@ -138,6 +146,7 @@ async function handleSettingChannel(ctx) {
 
 async function handleSettingText(ctx) {
     let stage = ctx.state.stage
+    let username = ctx.from.username
     if (stage === 'settings.contact_text.text') {
         let text = ctx.update.message.text
         let channel = (await ctx.state.sql('SELECT settings_channel FROM people WHERE username = ?', [username]))[0].settings_channel

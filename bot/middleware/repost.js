@@ -28,11 +28,16 @@ async function handleRepost(ctx) {
             ]
         })
         let newLink = '<a href="https://t.me/' + newMessageIdDb + '">here</a>'
-        ctx.telegram.editMessageText(
+        ctx.telegram.editMessageCaption(
             input.from.id, input.message.message_id,
             undefined,
-            'New item posted, you can find your new post ' + newLink + '.',
-            {parse_mode: 'html'})
+            '<i>New item posted, you can find your new post</i> ' + newLink + '.\n\n' + postData.caption,
+            {
+                disable_web_page_preview: true,
+                parse_mode: 'html',
+                reply_markup: { 
+                 inline_keyboard: [[{text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}]]
+            }})
     } else {
         ctx.reply('Sorry, not found')
     }

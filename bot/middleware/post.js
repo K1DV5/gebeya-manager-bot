@@ -38,15 +38,25 @@ function post(ctx) {
     }
 }
 
+async function licenseValid(channel, ctx) {
+    let expiry = (await ctx.state.sql('SELECT license_expiry FROM channels WHERE username = ?', [channel]))[0].license_expiry
+    let date = ctx.message.date
+    return expiry > date
+}
+
 async function handlePost(ctx) {
     let username = ctx.from.username
     ctx.state.sql('UPDATE people SET conversation = ?, chat_id = ? WHERE username = ?', ['post.channel', ctx.chat.id, username])
     // prepare choices
     let channels = (await ctx.state.sql('SELECT c.username FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])).map(ch => ch.username)
     if (channels.length === 1) {
-        ctx.state.sql('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
-            [channels[0], 'post.title', username])
-        ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
+        if (await licenseValid(channels[0], ctx)) {
+            ctx.state.sql('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
+                [channels[0], 'post.title', username])
+            ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
+        } else {
+            ctx.reply('Sorry, your license for @' + channels[0] + ' has expired. Contact @' + ctx.state.admins[0] + ' for renewal.')
+        }
     } else {
         let keyboard = makeKeyboardTiles(channels.map(ch => {return {text: '@' + channel, callback_data: 'post.channel:' + ch}}))
         ctx.reply('Which channel do you want to post to?', {
@@ -62,17 +72,15 @@ async function handleChannelStage(ctx) {
     let channel = ctx.update.callback_query.data.split(':')[1]
     let channels = await ctx.state.sql('SELECT c.username, c.license_expiry FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])
     if (channels.includes(channel)) {
-        let licenseExpiry = (await ctx.state.sql('SELECT license_expiry FROM channels WHERE username = ?',
-            [channel]))
-        if (licenseExpiry > ctx.message.date) {
+        if (await licenseValid(channel, ctx)) {
             ctx.state.sql('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
-                [channel, 'post.title', username])
+                           [channel, 'post.title', username])
             let chatId = ctx.update.callback_query.from.id
             let messageId = ctx.message.message_id
             let text = 'You will be posting to @' + channel + '.What is the title of the post?'
             ctx.telegram.editMessageText(chatId, messageId, undefined, text)
         } else {
-            ctx.reply('Sorry, your license for this channel has expired. Contact the admin for renewal.')
+            ctx.reply('Sorry, your license for @' + channel + ' has expired. Contact @' + ctx.state.admins[0] + ' for renewal.')
         }
     } else {
         ctx.reply('There is no channel with that username registered here by you.\nEnter another channel or choose one of those on the buttons')
@@ -196,13 +204,15 @@ async function handlePostDraft(ctx) {
         }
     )
     // record the post
-    ctx.state.sql('INSERT INTO posts (message_id, channel, title, description, price, caption, image_ids) VALUES (?, ?, ?, ?, ?, ?, ?)', [newMessageIdDb,
+    ctx.state.sql('INSERT INTO posts (message_id, channel, title, description, price, caption, image_ids, post_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [newMessageIdDb,
         channel,
         adminData.title,
         adminData.description,
         adminData.price,
         adminData.caption,
-        JSON.stringify(adminData.images)])
+        JSON.stringify(adminData.images),
+        ctx.update.callback_query.message.date
+    ])
     // clean up the person draft
     ctx.state.sql(`UPDATE people SET draft_title = NULL,
                            draft_description = NULL,
