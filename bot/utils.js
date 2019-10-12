@@ -81,7 +81,7 @@ async function downloadPhotos(destDir, files, token) {
     return downloaded
 }
 
-function watermarkProps(width, height, proportion = 0.35) {
+function watermarkProps(width, height, proportion = 0.3) {
     let watermarkPos = 1 - proportion
     let edgeOffset = proportion/2
     return {
@@ -93,28 +93,18 @@ function watermarkProps(width, height, proportion = 0.35) {
 }
 
 // width and height arrangements
-// console.log(arrange(5, 500))
-makeCollage('../images-staging/K1DV5/draft-images', '../images-staging/K1DV5/col.jpg')
 function arrange(total, width) {
-    if (total === 1) {
-        let height = width
-        return {
-            width,
-            height,
-            arrangement: [{x: 0, y: 0, w: width, h: height}],
-            watermark: watermarkProps(width, height)
-        }
-    }
     let cols = Math.floor(Math.sqrt(total))
     let left = total - cols**2
     let addFullRows = Math.floor(left/cols)
     let addRowItems = left % cols
-    rows = cols + addFullRows
+    let rows = cols + addFullRows
     let gap = 10 // gap between images
 
     let arrangement = []
     let singleWidth = ((width + gap) / cols) - gap
-    let singleHeight = singleWidth * 2/3
+    let totalRows = rows + (addRowItems? 1:0)
+    let singleHeight = (cols/totalRows) * singleWidth
     let yOffset = 0
     if (addRowItems) {
         let rowSingleWidth = ((width + gap) / addRowItems) - gap
@@ -125,7 +115,7 @@ function arrange(total, width) {
         yOffset += singleHeight + gap
     }
     for (let j = 0; j < rows; j++) {
-        yOffset += Math.ceil(j/(j+1)) * (singleHeight + gap)
+        yOffset += Math.ceil(j/(j+1))/* 0 or 1 */ * (singleHeight + gap)
         for (let i = 0; i < cols; i++) {
             let xOffset = i * (singleWidth + gap)
             arrangement.push({x: xOffset, y: yOffset, w: singleWidth, h: singleHeight})
