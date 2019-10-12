@@ -7,7 +7,11 @@ const {
     makeCollage
 } = require('../utils')
 const fs = require('fs')
+const util = require('util')
 const path = require('path')
+
+let photosReceived = {
+}
 
 function post(ctx) {
     if (ctx.state.isAdmin) {
@@ -38,25 +42,20 @@ function post(ctx) {
     }
 }
 
-async function licenseValid(channel, ctx) {
-    let expiry = (await ctx.state.sql('SELECT license_expiry FROM channels WHERE username = ?', [channel]))[0].license_expiry
-    let date = ctx.message.date
-    return expiry > date
-}
-
 async function handlePost(ctx) {
     let username = ctx.from.username
-    ctx.state.sql('UPDATE people SET conversation = ?, chat_id = ? WHERE username = ?', ['post.channel', ctx.chat.id, username])
     // prepare choices
-    let channels = (await ctx.state.sql('SELECT c.username FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])).map(ch => ch.username)
+    let channels = (await ctx.state.sql('SELECT c.username, c.license_expiry FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])).filter(ch => ch.license_expiry*1 > ctx.update.message.date).map(ch => ch.username)
+    if (!channels.length) {
+        ctx.state.sql('UPDATE people SET conversation = NULL, chat_id = ? WHERE username = ?', [ctx.chat.id, username])
+        ctx.reply('There is no channel with a valid license registered here by you. Contact @' + ctx.state.admins[0] + ' for renewal.')
+        return
+    }
+    ctx.state.sql('UPDATE people SET conversation = "post.channel", chat_id = ? WHERE username = ?', [ctx.chat.id, username])
     if (channels.length === 1) {
-        if (await licenseValid(channels[0], ctx)) {
-            ctx.state.sql('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
-                [channels[0], 'post.title', username])
-            ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
-        } else {
-            ctx.reply('Sorry, your license for @' + channels[0] + ' has expired. Contact @' + ctx.state.admins[0] + ' for renewal.')
-        }
+        ctx.state.sql('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
+            [channels[0], 'post.title', username])
+        ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
     } else {
         let keyboard = makeKeyboardTiles(channels.map(ch => {return {text: '@' + channel, callback_data: 'post.channel:' + ch}}))
         ctx.reply('Which channel do you want to post to?', {
@@ -72,16 +71,12 @@ async function handleChannelStage(ctx) {
     let channel = ctx.update.callback_query.data.split(':')[1]
     let channels = await ctx.state.sql('SELECT c.username, c.license_expiry FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])
     if (channels.includes(channel)) {
-        if (await licenseValid(channel, ctx)) {
-            ctx.state.sql('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
-                           [channel, 'post.title', username])
-            let chatId = ctx.update.callback_query.from.id
-            let messageId = ctx.message.message_id
-            let text = 'You will be posting to @' + channel + '.What is the title of the post?'
-            ctx.telegram.editMessageText(chatId, messageId, undefined, text)
-        } else {
-            ctx.reply('Sorry, your license for @' + channel + ' has expired. Contact @' + ctx.state.admins[0] + ' for renewal.')
-        }
+        ctx.state.sql('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
+                       [channel, 'post.title', username])
+        let chatId = ctx.update.callback_query.from.id
+        let messageId = ctx.message.message_id
+        let text = 'You will be posting to @' + channel + '.What is the title of the post?'
+        ctx.telegram.editMessageText(chatId, messageId, undefined, text)
     } else {
         ctx.reply('There is no channel with that username registered here by you.\nEnter another channel or choose one of those on the buttons')
     }
@@ -108,71 +103,87 @@ function handlePriceStage(ctx) {
     let price = ctx.message.text
     ctx.state.sql('UPDATE people SET draft_price = ?, conversation = ? WHERE username = ?',
         [price, 'post.photo', username])
-    ctx.reply('Send some photos')
+    ctx.reply('Send some photos and finally send the command /end when you\'re done.', {
+        reply_markup: {
+            resize_keyboard: true
+        }
+    })
 }
 
 async function handlePhotoStage(ctx) {
     let username = ctx.from.username
-    let filesToDown = []
-    for (let photo of ctx.update.message.photo) {
-        filesToDown.push(await ctx.telegram.getFile(photo.file_id))
-    }
-    let imagesDir = path.join(ctx.state.imagesDir, username, 'draft-images')
-    let channel = (await ctx.state.sql('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination
-    let logoImg = path.join(ctx.state.imagesDir, username, 'logo-' + channel + '.png')
-    try {
-        await fs.promises.stat(logoImg) // check if it exists
-    } catch (err) {
-        if (err.code === 'ENOENT') {
-            logoImg = undefined
-            ctx.reply("You don't have your logo here, the images will not be watermarked. To watermark your images with your logo, go to /settings and 'Logo'.")
+    if (ctx.updateSubTypes.includes('photo')) {
+        let photo = ctx.update.message.photo
+        let fileProps = await ctx.telegram.getFile(photo[photo.length-1].file_id)
+        if (photosReceived[username]) {
+            photosReceived[username].push(fileProps)
+        } else {
+            photosReceived[username] = [fileProps]
         }
-    }
-    let draftCollage = path.join(ctx.state.imagesDir, username, 'draft-collage.jpg')
-    let images = await downloadPhotos(imagesDir, filesToDown, ctx.telegram.token)
-    await makeCollage(imagesDir, draftCollage, logoImg)  // make a collage and watermark it
-    await watermarkDir(imagesDir, imagesDir, logoImg)  // watermark every image
-    let removedAtPost = [  // messages removed when the draft is posted
-        // intro to the watermarked images preview
-        (await ctx.reply('The individual images will look like this...')).message_id]
-    // the watermarked images
-    let previewImages = await ctx.replyWithMediaGroup(images.map(img => {
-        return {
-            type: 'photo',
-            media: {source: fs.createReadStream(img)}
+    } else if (ctx.updateSubTypes.includes('text') && ctx.update.message.text === '/end') {
+        // get the accumulated file props
+        let filesToDown = photosReceived[username]
+        // clear the object
+        photosReceived[username] = undefined
+        let imagesDir = path.join(ctx.state.imagesDir, username, 'draft-images')
+        let channel = (await ctx.state.sql('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination
+        let logoImg = path.join(ctx.state.imagesDir, username, 'logo-' + channel + '.png')
+        try {
+            await fs.promises.stat(logoImg) // check if it exists
+        } catch (err) {
+            if (err.code === 'ENOENT') {
+                logoImg = undefined
+                ctx.reply("You don't have your logo here, the images will not be watermarked. To watermark your images with your logo, go to /settings and 'Logo'.")
+            }
         }
-    }))
-    for (let message of previewImages) {
-        removedAtPost.push(message.message_id)
-    }
-    // the intro to the post preview
-    removedAtPost.push((await ctx.reply('The post will look like this...')).message_id)
-    // the post preview
-    let caption = (await draftToPostable(username, ctx.state.sql)).caption
-    let postPreview = await ctx.replyWithPhoto(
-        {source: fs.createReadStream(draftCollage)}, {
-        caption, reply_markup: {
-            inline_keyboard: [
-                [
-                    {text: 'Post', callback_data: 'post:' + username},
-                    {text: 'Discard', callback_data: 'discard:' + username}
+        let draftCollage = path.join(ctx.state.imagesDir, username, 'draft-collage.jpg')
+        let images = await downloadPhotos(imagesDir, filesToDown, ctx.telegram.token)
+        await makeCollage(imagesDir, draftCollage, logoImg)  // make a collage and watermark it
+        await watermarkDir(imagesDir, imagesDir, logoImg)  // watermark every image
+        let removedAtPost = [  // messages removed when the draft is posted
+            // intro to the watermarked images preview
+            (await ctx.reply('The individual images will look like this...', {
+                reply_markup: {remove_keyboard: true}
+            })).message_id]
+        // the watermarked images
+        let previewImages = await ctx.replyWithMediaGroup(images.map(img => {
+            return {
+                type: 'photo',
+                media: {source: fs.createReadStream(img)}
+            }
+        }))
+        for (let message of previewImages) {
+            removedAtPost.push(message.message_id)
+        }
+        // the intro to the post preview
+        removedAtPost.push((await ctx.reply('The post will look like this...')).message_id)
+        // the post preview
+        let caption = (await draftToPostable(username, ctx.state.sql)).caption
+        let postPreview = await ctx.replyWithPhoto(
+            {source: fs.createReadStream(draftCollage)}, {
+            caption, reply_markup: {
+                inline_keyboard: [
+                    [
+                        {text: 'Post', callback_data: 'post:' + username},
+                        {text: 'Discard', callback_data: 'discard:' + username}
+                    ]
                 ]
-            ]
+            }
+        },
+        )
+        let imageIds = {
+            collage: postPreview.photo.slice(-1)[0].file_id,
+            watermarked: previewImages.map(msg => msg.photo.slice(-1)[0].file_id)
         }
-    },
-    )
-    let imageIds = {
-        collage: postPreview.photo.slice(-1)[0].file_id,
-        watermarked: previewImages.map(msg => msg.photo.slice(-1)[0].file_id)
+        ctx.state.sql('UPDATE people SET draft_image_ids = ?, preview_post_message_id = ?, removed_message_ids = ?, conversation = "post.ready" WHERE username = ?', [
+            JSON.stringify(imageIds),
+            postPreview.message_id,
+            JSON.stringify(removedAtPost),
+            username
+        ])
+        fs.promises.unlink(draftCollage)
+        rmdirWithFiles(imagesDir)
     }
-    ctx.state.sql('UPDATE people SET draft_image_ids = ?, preview_post_message_id = ?, removed_message_ids = ?, conversation = "post.ready" WHERE username = ?', [
-        JSON.stringify(imageIds),
-        postPreview.message_id,
-        JSON.stringify(removedAtPost),
-        username
-    ])
-    fs.promises.unlink(draftCollage)
-    rmdirWithFiles(imagesDir)
 }
 
 async function handlePostDraft(ctx) {

@@ -2,7 +2,7 @@
 async function handleSoldToggle(ctx) {
     let messageIdDb = ctx.update.callback_query.data
     let [channel, messageId] = messageIdDb.split('/')
-    let query = `SELECT p.caption, p.image_ids, p.state, p.channel, c.sold_template
+    let query = `SELECT p.caption, p.image_ids, p.state, p.channel, c.sold_template, c.license_expiry
                  FROM posts as p
                  INNER JOIN channels AS c
                  ON c.username = p.channel
@@ -21,7 +21,7 @@ async function handleSoldToggle(ctx) {
             let userId = captionEntities.filter(e => e.type == 'text_mention')[0].user.id
             let itemLink = '<a href="' + captionEntities.filter(e => e.type == 'text_link')[0].url + '">this item</a>'
             let customerLink = `<a href="tg://user?id=${userId}">customer</a>`
-            let text = `You have a ${customerLink} who wants to buy ${itemLink} from @${post.channel}. They may contact you.`
+            let text = `<i>You have a</i> ${customerLink} <i>who wants to buy</i> ${itemLink} <i>from</i> @${post.channel}. <i>They may contact you</i>.\n\n` + post.caption
             let chatId = ctx.update.callback_query.from.id
             let adminMessageId = ctx.update.callback_query.message.message_id
             ctx.telegram.editMessageCaption(chatId, adminMessageId, undefined, text, {
@@ -38,6 +38,10 @@ async function handleSoldToggle(ctx) {
             })
         }
     } else {
+        if (post.license_expiry*1 < ctx.update.callback_query.message.date) {
+            ctx.reply('Your license for this channel has expired. Contact @' + ctx.state.admins + ' for renewal.')
+            return
+        }
         let caption = post.caption
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + messageIdDb.replace('/', '-')
         ctx.telegram.editMessageCaption('@' + channel, messageId, undefined, caption, {
@@ -49,7 +53,7 @@ async function handleSoldToggle(ctx) {
         let userId = captionEntities.filter(e => e.type == 'text_mention')[0].user.id
         let itemLink = '<a href="' + captionEntities.filter(e => e.type == 'text_link')[0].url + '">this item</a>'
         let customerLink = `<a href="tg://user?id=${userId}">customer</a>`
-        let text = `You have a ${customerLink} who wants to buy ${itemLink} from @${post.channel}. They may contact you.`
+        let text = `<i>You have a</i> ${customerLink} <i>who wants to buy</i> ${itemLink} <i>from</i> @${post.channel}. <i>They may contact you</i>.\n\n` + post.caption
         let chatId = ctx.update.callback_query.from.id
         let adminMessageId = ctx.update.callback_query.message.message_id
         ctx.telegram.editMessageCaption(chatId, adminMessageId, undefined, text, {

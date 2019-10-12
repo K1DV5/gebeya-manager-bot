@@ -1,6 +1,17 @@
 const mysql = require('mysql')
 // const handlers = require('./handlers')
 const Telegraf = require('telegraf')
+// the handlers
+const start = require('./middleware/start')
+const post = require('./middleware/post')
+const admin = require('./middleware/admin')
+const settings = require('./middleware/settings')
+const help = require('./middleware/help')
+const license = require('./middleware/license')
+const text = require('./middleware/text')
+const doc = require('./middleware/document')
+const callback = require('./middleware/callback')
+
 
 const token = '949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw';
 
@@ -44,16 +55,17 @@ bot.use(async (ctx, next) => { // set necessary variables
     next()
 })
 
-bot.start(               require('./middleware/start'))
-bot.command('post',      require('./middleware/post'))
-bot.command('adminadd',  require('./middleware/admin'))
-bot.command('settings',  require('./middleware/settings'))
-bot.command('help',      require('./middleware/help'))
-bot.command('license',   require('./middleware/license'))
-bot.on('text',           require('./middleware/text'))
-bot.on('photo',          require('./middleware/post'))
-bot.on('document',       require('./middleware/document'))
-bot.on('callback_query', require('./middleware/callback'))
+bot.start(               start)
+bot.command('post',      post)
+bot.command('adminadd',  admin)
+bot.command('settings',  settings)
+bot.command('help',      help)
+bot.command('license',   license)
+bot.command('end',       post)
+bot.on('text',           text)
+bot.on('photo',          post)
+bot.on('document',       doc)
+bot.on('callback_query', callback)
 
 bot.launch().then(() => console.log('listening...')).catch((err)=>{console.log(err.message)})
 

@@ -64,6 +64,12 @@ async function handleEditPost(ctx) {
                               preview_post_message_id = NULL,
                               conversation = NULL
              WHERE username = ?`, [username])
+        ctx.state.sql(`UPDATE posts SET title = ?,
+                                        description = ?,
+                                        price = ?,
+                                        caption = ?
+                                        WHERE message_id = ?`,
+            [adminData.title, adminData.description, adminData.price, adminData.caption, adminData.destination])
         let input = ctx.update.callback_query
         let chatId = ctx.update.callback_query.from.id
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
@@ -95,6 +101,12 @@ async function handleEditPost(ctx) {
     } else {
         let input = ctx.update.callback_query
         let messageIdDb = input.data
+        let channel = messageIdDb.split('/')[0]
+        let licenseValid = (await ctx.state.sql('SELECT license_expiry FROM channels WHERE username = ?', [channel]))[0].license_expiry*1 > ctx.update.callback_query.message.date
+        if (!licenseValid) {
+            ctx.reply('Your license for this channel has expired. Contact @' + ctx.state.admins + ' for renewal.')
+            return
+        }
         let query = 'SELECT 1 FROM posts WHERE message_id = ?'
         let postExists = (await ctx.state.sql(query, [messageIdDb]))[0]
         if (postExists) {

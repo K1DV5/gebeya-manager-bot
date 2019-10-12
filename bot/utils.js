@@ -81,7 +81,7 @@ async function downloadPhotos(destDir, files, token) {
     return downloaded
 }
 
-function watermarkProps(width, height, proportion = 0.2) {
+function watermarkProps(width, height, proportion = 0.35) {
     let watermarkPos = 1 - proportion
     let edgeOffset = proportion/2
     return {
@@ -93,6 +93,8 @@ function watermarkProps(width, height, proportion = 0.2) {
 }
 
 // width and height arrangements
+// console.log(arrange(13))
+// makeCollage('../images-staging/K1DV5/draft-images', '../images-staging/K1DV5/col.jpg')
 function arrange(total, width) {
     if (total === 1) {
         let height = width
@@ -103,6 +105,12 @@ function arrange(total, width) {
             watermark: watermarkProps(width, height)
         }
     }
+    // let cols = Math.floor(Math.sqrt(total))
+    // let left = total - cols**2
+    // let addFullRows = Math.floor(left/cols)
+    // let addIncRowItems = left % cols
+    // rows = cols + addFullRows + Math.ceil(addIncRowItems/cols)
+    // return [cols, rows, addIncRowItems]
     let gap = 10 // gap between images
     if (total === 2) {
         let height = width * 5 / 4
@@ -157,7 +165,7 @@ async function watermarkDir(sourceDir, destDir, watermarkImg) {
     }
 }
 
-async function makeCollage(sources, dest, watermarkImg = undefined, width = 40) {
+async function makeCollage(sources, dest, watermarkImg = undefined, width = 720) {
     if (typeof sources === 'string') {  // a username was passed, read every file in that folder
         sources = (await fs.promises.readdir(sources)).map(file => path.join(sources, file))
     }

@@ -8,6 +8,10 @@ async function handleText(ctx) {
     if (ctx.state.isAdmin && text.trim()) {
         // get the current stage
         let stage = ctx.state.stage
+        if (!stage) {
+            ctx.reply(ctx.state.fallbackReply)
+            return
+        }
         for (let [about, handler] of Object.entries(convoRoutes)) {
             if (stage.slice(0, about.length + 1) === about + '.') {
                 handler(ctx)
