@@ -93,8 +93,8 @@ function watermarkProps(width, height, proportion = 0.35) {
 }
 
 // width and height arrangements
-// console.log(arrange(13))
-// makeCollage('../images-staging/K1DV5/draft-images', '../images-staging/K1DV5/col.jpg')
+// console.log(arrange(5, 500))
+makeCollage('../images-staging/K1DV5/draft-images', '../images-staging/K1DV5/col.jpg')
 function arrange(total, width) {
     if (total === 1) {
         let height = width
@@ -105,42 +105,33 @@ function arrange(total, width) {
             watermark: watermarkProps(width, height)
         }
     }
-    // let cols = Math.floor(Math.sqrt(total))
-    // let left = total - cols**2
-    // let addFullRows = Math.floor(left/cols)
-    // let addIncRowItems = left % cols
-    // rows = cols + addFullRows + Math.ceil(addIncRowItems/cols)
-    // return [cols, rows, addIncRowItems]
+    let cols = Math.floor(Math.sqrt(total))
+    let left = total - cols**2
+    let addFullRows = Math.floor(left/cols)
+    let addRowItems = left % cols
+    rows = cols + addFullRows
     let gap = 10 // gap between images
-    if (total === 2) {
-        let height = width * 5 / 4
-        let singleHeight = (height - gap) / 2
-        return {
-            width,
-            height,
-            arrangement: [
-                {x: 0, y: 0, w: width, h: singleHeight},
-                {x: 0, y: singleHeight + gap, w: width, h: singleHeight}
-            ],
-            watermark: watermarkProps(width, height)
+
+    let arrangement = []
+    let singleWidth = ((width + gap) / cols) - gap
+    let singleHeight = singleWidth * 2/3
+    let yOffset = 0
+    if (addRowItems) {
+        let rowSingleWidth = ((width + gap) / addRowItems) - gap
+        for (let i = 0; i < addRowItems; i++) {
+            let xOffset = i * (rowSingleWidth + gap)
+            arrangement.push({x: xOffset, y: yOffset, w: rowSingleWidth, h: singleHeight})
+        }
+        yOffset += singleHeight + gap
+    }
+    for (let j = 0; j < rows; j++) {
+        yOffset += Math.ceil(j/(j+1)) * (singleHeight + gap)
+        for (let i = 0; i < cols; i++) {
+            let xOffset = i * (singleWidth + gap)
+            arrangement.push({x: xOffset, y: yOffset, w: singleWidth, h: singleHeight})
         }
     }
-    let singleWidth = (width - gap) / 2
-    let singleHeight = singleWidth
-    let rem = total % 2
-    let height = (singleHeight + gap) * (total + rem) / 2 - gap
-    arrangement = []
-    let currentLine = 0
-    if (rem) {
-        arrangement.push({x: 0, y: 0, w: width, h: singleHeight})
-        currentLine += singleHeight + gap
-        total--
-    }
-    for (let i = 0; i < total / 2; i++) {
-        arrangement.push({x: 0, y: currentLine, w: singleWidth, h: singleHeight})
-        arrangement.push({x: singleWidth + gap, y: currentLine, w: singleWidth, h: singleHeight})
-        currentLine += singleHeight + gap
-    }
+    let height = yOffset + singleHeight
     return {width, height, arrangement, watermark: watermarkProps(width, height)}
 }
 
