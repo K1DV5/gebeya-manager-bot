@@ -34,13 +34,14 @@ async function handleSettings(ctx) {
         ctx.reply('What do you want to change?', {
             reply_markup: {
                 inline_keyboard: [
+                    [{ text: 'Logo', callback_data: 'settings:logo' },],
                     [
-                        { text: 'Logo', callback_data: 'settings:logo' },
+                        { text: 'Caption template', callback_data: 'settings:caption_template' },
                         { text: 'Contact text', callback_data: 'settings:contact_text' }
                     ],
                     [
-                        { text: 'Caption template', callback_data: 'settings:caption_template' },
-                        { text: 'Sold template', callback_data: 'settings:sold_template' }
+                        { text: 'Sold template', callback_data: 'settings:sold_template' },
+                        { text: 'Description bullets', callback_data: 'settings:description_bullets' },
                     ]
                 ]
             }
@@ -84,6 +85,14 @@ const settingSpectficChannelParams = {
             let text = '<i>You will be changing the text shown below the caption when a customer selects "Buy" from</i> @' + channel + ', <i>here is the current text. You can include additional info like phone numbers and so on.</i>\n\n' + currentText
             return text
         }
+    },
+    description_bullets: {
+        next: 'settings.description_bullets.text',
+        text: async (ctx, channel) => {
+            let currentBullets = (await ctx.state.sql('SELECT description_bullets FROM channels WHERE username = ?', [channel]))[0].description_bullets
+            let text = '<i>You will be changing the bullet point characters if you mostly list features of the item you post on</i> @' + channel + ', <i>here is the current one. Send a new phrase that you want to appear before every line of the description. If you want to make it empty, send</i> <b>none</b>\n\n' + currentBullets
+            return text
+        }
     }
 }
 
@@ -103,6 +112,10 @@ const settingSpectficIntroParams = {
     contact_text: {
         text: 'Which channel\'s contact text do you want to change?',
         next: 'settings:contact_text.'
+    },
+    description_bullets: {
+        text: 'Which channel\'s description bullets do you want to change?',
+        next: 'settings:description_bullets'
     }
 }
 
@@ -173,6 +186,12 @@ async function handleSettingText(ctx) {
         } else {
             ctx.reply('You have to include ":caption", try again.')
         }
+    } else if (stage === 'settings.description_bullets.text') {
+        let text = ctx.update.message.text
+        let channel = (await ctx.state.sql('SELECT settings_channel FROM people WHERE username = ?', [username]))[0].settings_channel
+        ctx.state.sql('UPDATE channels SET description_bullets = ? WHERE username = ?', [text, channel])
+        ctx.state.sql('UPDATE people SET conversation = NULL WHERE username = ?', [username])
+        ctx.reply('@' + channel + "'s description bullets has been updated. The new one will be shown the next time you post something.")
     }
 }
 

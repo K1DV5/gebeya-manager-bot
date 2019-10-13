@@ -21,7 +21,8 @@ let connection = mysql.createConnection({
     host: 'localhost',
     user: 'bot',
     password : 'secret',
-    database: 'my_gebeya'
+    database: 'my_gebeya',
+    charset: 'utf8mb4', // escape encoding hell
 })
 
 connection.connect()

@@ -1,5 +1,9 @@
 /* DATA MODEL FOR THE BOT */
 
+/* escape from the encoding abomination hell */
+ALTER DATABASE my_gebeya CHARACTER SET = 'utf8mb4' COLLATE ='utf8mb4_unicode_ci';
+SET NAMES utf8mb4;
+
 DROP TABLE IF EXISTS posts, channels, people;
 
 /* admins of channels */
@@ -25,6 +29,7 @@ CREATE TABLE channels (username VARCHAR(255) PRIMARY KEY,
                        caption_template VARCHAR(1024) DEFAULT ':title\n\n:description\n\nPrice: :price',
                        sold_template VARCHAR(1024) DEFAULT '===( SOLD )===\n\n:caption\n\n===( SOLD )===',
                        license_expiry VARCHAR(255),
+                       description_bullets VARCHAR(12) DEFAULT 'none',
                        FOREIGN KEY (admin) REFERENCES people(username)
 );
 
@@ -58,5 +63,10 @@ CREATE TRIGGER sale_count BEFORE UPDATE ON posts FOR EACH ROW BEGIN
     END IF;
 END //
 DELIMITER ;
-insert into people (username) values('K1DV5');
-insert into channels (username, admin) values('mygeb', 'K1DV5');
+insert into people (username) values('Ntsuhwork');
+insert into channels (username, admin, license_expiry) values('mygeb', 'Ntsuhwork', '1572382800');
+/* insert into people (username) values('K1DV5'); */
+/* insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1572382800'); */
+/* insert into posts (message_id, title) values (45, 'አውርድ'); */
+/* insert into posts (message_id, title) values (45, '🍒foo'); */
+/* select title from posts; */
