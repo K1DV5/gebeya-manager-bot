@@ -1,0 +1,101 @@
+const mysql = require('mysql')
+
+let connection = mysql.createConnection({
+    host: 'localhost',
+    user: 'bot',
+    password : 'secret',
+    database: 'my_gebeya'
+})
+
+connection.connect()
+
+class BaseModel {
+    constructor(table, cols) {
+        this.cols = cols
+        this.table = table
+    }
+
+    sql(sql, args) {
+        // process sql query and return the result
+        return new Promise((resolve) => {
+            connection.query(sql, args, (error, results) => {
+                if (error) {
+                    console.log(error.message)
+                } else if (results) {
+                    resolve(results)
+                }
+            })
+        })
+    }
+
+    async exists(index) {
+        if ((await this.sql('SELECT 1 FROM ' + this.table + ' WHERE ' + this.cols[0] + ' = ?', [index]))[0]) {
+            return true
+        }
+        return false
+    }
+
+    insert(props, onlyOnDuplicate={}) {
+        let pairs = Object.entries(props).filter(p => this.cols.includes(p[0]))
+        let optPairs = Object.entries(onlyOnDuplicate).filter(p => this.cols.includes(p[0]))
+        let query
+        let values
+        if (pairs.length === 1 && !optPairs.length) {
+            let pair = pairs[0]
+            query = 'INSERT IGNORE INTO ' + this.table + ' (' + pair[0] + ') VALUES (?)'
+            values = [pair[1]]
+        } else {
+            query = 'INSERT INTO ' + this.table + '('
+            let postQuery = ' ON DUPLICATE KEY UPDATE '
+            values = []
+            for (let pair of pairs) {
+                query += pair[0] + ','
+                postQuery += pair[0] + '=' + 'VALUES(' + pair[0] + '),'
+                values.push(pair[1])
+            }
+            query = query.slice(0, query.length-1)
+                    + ') VALUES ('
+                    + '?,'.repeat(values.length).slice(0, values.length*2-1)
+            for (let pair of optPairs) {
+                postQuery += pair[0] + '=' + '?,'
+                values.push(pair[1])
+            }
+            query += ')' + postQuery.slice(0, postQuery.length-1)
+        }
+        // console.log(query, values)
+        this.sql(query, values)
+    }
+
+    async get(index, cols) {
+        if (cols === undefined) {
+            return (await this.sql('SELECT * FROM ' + this.table + ' WHERE ' + this.cols[0] + ' = ?', [index]))[0]
+        }
+        if (typeof cols === 'string') {
+            if (this.cols.includes(cols)) {
+                let query = 'SELECT ' + cols + ' FROM ' + this.table + ' WHERE ' + this.cols[0] + ' = ?'
+                return (await this.sql(query, [index]))[0][cols]
+            }
+        }
+        let available = cols.filter(col => this.cols.includes(col))
+        let query = 'SELECT ' + available.join(',') + ' FROM ' + this.table + ' WHERE ' + this.cols[0] + ' = ?'
+        return (await this.sql(query, [index]))[0]
+    }
+
+    set(index, params) {
+        let query = 'UPDATE ' + this.table + ' SET '
+        let values = []
+        for (let [key, val] of Object.entries(params).filter(p => this.cols.includes(p[0]))) {
+            query += key + '=?,'
+            values.push(val)
+        }
+        query = query.slice(0, query.length-1) + ' WHERE ' + this.cols[0] + ' = ?'
+        this.sql(query, [...values, index])
+    }
+
+}
+// let b = new BaseModel('people', ['username', 'chat_id', 'conversation'])
+// b.exists('K1DV5').then(console.log)
+// b.insert({username: 'K1DV5'})
+// b.get('K1DV5', ['chat_id']).then(console.log)
+
+module.exports = BaseModel

@@ -93,6 +93,8 @@ function watermarkProps(width, height, proportion = 0.3) {
 }
 
 // width and height arrangements
+// console.log(arrange(5, 500))
+// makeCollage('../images-staging/K1DV5/draft-images', '../images-staging/K1DV5/col.jpg', '../rnd/logo-196x.png')
 function arrange(total, width) {
     let cols = Math.floor(Math.sqrt(total))
     let left = total - cols**2
@@ -104,7 +106,7 @@ function arrange(total, width) {
     let arrangement = []
     let singleWidth = ((width + gap) / cols) - gap
     let totalRows = rows + (addRowItems? 1:0)
-    let singleHeight = (cols/totalRows) * singleWidth
+    let singleHeight = (cols/totalRows) * singleWidth * 1.2
     let yOffset = 0
     if (addRowItems) {
         let rowSingleWidth = ((width + gap) / addRowItems) - gap

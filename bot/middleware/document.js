@@ -2,7 +2,7 @@ const {downloadFile} = require('../utils')
 const path = require('path')
 
 async function handleDocument(ctx) {
-    if (ctx.state.stage === 'settings.logo.document') {
+    if (ctx.state.convo === 'settings.logo.document') {
         let username = ctx.from.username
         let doc = ctx.update.message.document
         let [type, ext] = doc.mime_type.split('/')

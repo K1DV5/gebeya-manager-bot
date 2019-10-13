@@ -1,13 +1,11 @@
 const {
     makeKeyboardTiles,
-    draftToPostable,
     downloadPhotos,
     watermarkDir,
     rmdirWithFiles,
     makeCollage
 } = require('../utils')
 const fs = require('fs')
-const util = require('util')
 const path = require('path')
 
 let photosReceived = {
@@ -15,7 +13,7 @@ let photosReceived = {
 
 function post(ctx) {
     if (ctx.state.isAdmin) {
-        let stage = ctx.state.stage
+        let stage = ctx.state.convo
         let message = ctx.update.message
         if (message && message.text && message.text.indexOf('/post') === 0) {
             stage = null
@@ -44,17 +42,15 @@ function post(ctx) {
 
 async function handlePost(ctx) {
     let username = ctx.from.username
+    ctx.state.people.set(username, {conversation: null, chat_id: ctx.chat.id})
     // prepare choices
-    let channels = (await ctx.state.sql('SELECT c.username, c.license_expiry FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])).filter(ch => ch.license_expiry*1 > ctx.update.message.date).map(ch => ch.username)
+    let channels = await ctx.state.people.getChannels(username, ctx.update.message.date)
     if (!channels.length) {
-        ctx.state.sql('UPDATE people SET conversation = NULL, chat_id = ? WHERE username = ?', [ctx.chat.id, username])
         ctx.reply('There is no channel with a valid license registered here by you. Contact @' + ctx.state.admins[0] + ' for renewal.')
         return
     }
-    ctx.state.sql('UPDATE people SET conversation = "post.channel", chat_id = ? WHERE username = ?', [ctx.chat.id, username])
     if (channels.length === 1) {
-        ctx.state.sql('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
-            [channels[0], 'post.title', username])
+        ctx.state.people.set(username, {draft_destination: channels[0], conversation: 'post.title'})
         ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
     } else {
         let keyboard = makeKeyboardTiles(channels.map(ch => {return {text: '@' + channel, callback_data: 'post.channel:' + ch}}))
@@ -69,45 +65,32 @@ async function handlePost(ctx) {
 async function handleChannelStage(ctx) {
     let username = ctx.from.username
     let channel = ctx.update.callback_query.data.split(':')[1]
-    let channels = await ctx.state.sql('SELECT c.username, c.license_expiry FROM channels as c INNER JOIN people AS p ON p.username = c.admin WHERE p.username = ?', [username])
-    if (channels.includes(channel)) {
-        ctx.state.sql('UPDATE people SET draft_destination = ?, conversation = ? WHERE username = ?',
-                       [channel, 'post.title', username])
-        let chatId = ctx.update.callback_query.from.id
-        let messageId = ctx.message.message_id
-        let text = 'You will be posting to @' + channel + '.What is the title of the post?'
-        ctx.telegram.editMessageText(chatId, messageId, undefined, text)
-    } else {
-        ctx.reply('There is no channel with that username registered here by you.\nEnter another channel or choose one of those on the buttons')
-    }
+    ctx.state.people.set(username, {draft_destination: channel, conversation: 'post.title'})
+    let chatId = ctx.update.callback_query.from.id
+    let messageId = ctx.message.message_id
+    let text = 'You will be posting to @' + channel + '.What is the title of the post?'
+    ctx.telegram.editMessageText(chatId, messageId, undefined, text)
 }
 
 function handleTitleStage(ctx) {
     let username = ctx.from.username
     let title = ctx.message.text
-    ctx.state.sql('UPDATE people SET draft_title = ?, conversation = ? WHERE username = ?',
-        [title, 'post.description', username])
+    ctx.state.people.set(username, {draft_title: title, conversation: 'post.description'})
     ctx.reply('Write the description')
 }
 
 function handleDescriptionStage(ctx) {
     let username = ctx.from.username
     let description = ctx.message.text
-    ctx.state.sql('UPDATE people SET draft_description = ?, conversation = ? WHERE username = ?',
-        [description, 'post.price', username])
+    ctx.state.people.set(username, {draft_description: description, conversation: 'post.price'})
     ctx.reply('And the price? How much is it?')
 }
 
 function handlePriceStage(ctx) {
     let username = ctx.from.username
     let price = ctx.message.text
-    ctx.state.sql('UPDATE people SET draft_price = ?, conversation = ? WHERE username = ?',
-        [price, 'post.photo', username])
-    ctx.reply('Send some photos and finally send the command /end when you\'re done.', {
-        reply_markup: {
-            resize_keyboard: true
-        }
-    })
+    ctx.state.people.set(username, {draft_price: price, conversation: 'post.photo'})
+    ctx.reply('Send some photos and finally send the command /end when you\'re done.')
 }
 
 async function handlePhotoStage(ctx) {
@@ -123,10 +106,14 @@ async function handlePhotoStage(ctx) {
     } else if (ctx.updateSubTypes.includes('text') && ctx.update.message.text === '/end') {
         // get the accumulated file props
         let filesToDown = photosReceived[username]
+        if (filesToDown === undefined) {
+            ctx.reply('You haven\'t sent any photos, send some and then /end')
+            return
+        }
         // clear the object
         photosReceived[username] = undefined
         let imagesDir = path.join(ctx.state.imagesDir, username, 'draft-images')
-        let channel = (await ctx.state.sql('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination
+        let channel = await ctx.state.people.get(username, 'draft_destination')
         let logoImg = path.join(ctx.state.imagesDir, username, 'logo-' + channel + '.png')
         try {
             await fs.promises.stat(logoImg) // check if it exists
@@ -158,7 +145,7 @@ async function handlePhotoStage(ctx) {
         // the intro to the post preview
         removedAtPost.push((await ctx.reply('The post will look like this...')).message_id)
         // the post preview
-        let caption = (await draftToPostable(username, ctx.state.sql)).caption
+        let caption = (await ctx.state.people.getDraft(username)).caption
         let postPreview = await ctx.replyWithPhoto(
             {source: fs.createReadStream(draftCollage)}, {
             caption, reply_markup: {
@@ -175,19 +162,19 @@ async function handlePhotoStage(ctx) {
             collage: postPreview.photo.slice(-1)[0].file_id,
             watermarked: previewImages.map(msg => msg.photo.slice(-1)[0].file_id)
         }
-        ctx.state.sql('UPDATE people SET draft_image_ids = ?, preview_post_message_id = ?, removed_message_ids = ?, conversation = "post.ready" WHERE username = ?', [
-            JSON.stringify(imageIds),
-            postPreview.message_id,
-            JSON.stringify(removedAtPost),
-            username
-        ])
+        ctx.state.people.set(username, {
+            draft_image_ids: JSON.stringify(imageIds),
+            preview_post_message_id: postPreview.message_id,
+            removed_message_ids: JSON.stringify(removedAtPost),
+            conversation: 'post.ready'
+        })
         fs.promises.unlink(draftCollage)
         rmdirWithFiles(imagesDir)
     }
 }
 
 async function handlePostDraft(ctx) {
-    let adminData = (await draftToPostable(ctx.from.username, ctx.state.sql))
+    let adminData = await ctx.state.people.getDraft(ctx.from.username)
     let channel = adminData.destination
     let message = await ctx.telegram.sendPhoto('@' + channel, adminData.images.collage, {caption: adminData.caption})
     let newMessageIdDb = channel + '/' + message.message_id
@@ -215,41 +202,28 @@ async function handlePostDraft(ctx) {
         }
     )
     // record the post
-    ctx.state.sql('INSERT INTO posts (message_id, channel, title, description, price, caption, image_ids, post_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [newMessageIdDb,
+    ctx.state.posts.insert(newMessageIdDb, {
         channel,
-        adminData.title,
-        adminData.description,
-        adminData.price,
-        adminData.caption,
-        JSON.stringify(adminData.images),
-        ctx.update.callback_query.message.date
-    ])
+        title: adminData.title,
+        description: adminData.description,
+        price: adminData.price,
+        caption: adminData.caption,
+        image_ids: JSON.stringify(adminData.images),
+        post_date: ctx.update.callback_query.message.date
+    })
     // clean up the person draft
-    ctx.state.sql(`UPDATE people SET draft_title = NULL,
-                           draft_description = NULL,
-                           draft_destination = NULL,
-                           draft_image_ids = NULL,
-                           removed_message_ids = NULL,
-                           preview_post_message_id = NULL
-         WHERE username = ?`, [adminData.username])
+    ctx.state.people.clearDraft(username)
 }
 
 async function handleDiscardDraft(ctx) {
-    let adminData = (await draftToPostable(ctx.from.username, ctx.state.sql))
+    let adminData = await ctx.state.people.getDraft(ctx.from.username)
     // remove the preview messages
     await Promise.all(adminData.removedIds.map(async id => {
         await ctx.telegram.deleteMessage(adminData.chat_id, id)
     }))
     await ctx.telegram.deleteMessage(adminData.chat_id, adminData.previewId)
     // clean up the person draft
-    ctx.state.sql(`UPDATE people SET draft_title = NULL,
-                           draft_description = NULL,
-                           draft_destination = NULL,
-                           draft_image_ids = NULL,
-                           removed_message_ids = NULL,
-                           preview_post_message_id = NULL,
-                           conversation = NULL
-         WHERE username = ?`, [adminData.username])
+    ctx.state.people.clearDraft(username)
     ctx.reply('Draft discarded.')
 }
 

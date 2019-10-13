@@ -3,29 +3,20 @@ async function handleStart(ctx) {
     let {id: userId, username} = ctx.update.message.from
     if (ctx.startPayload) {  // a button on a post was clicked
         let messageIdDb = ctx.startPayload.trim().replace('-', '/')
-        let message = (await ctx.state.sql('SELECT * FROM posts WHERE message_id = ?', [messageIdDb]))[0]
+        let message = await ctx.state.posts.get(messageIdDb)
         if (message) {
             let [channel] = messageIdDb.split('/', 1)
             // send messages to both parties.
             let itemText = 'this item'
             let itemLink = `<a href="https://t.me/${messageIdDb}">${itemText}</a>`
-            let person = (await ctx.state.sql(`SELECT a.chat_id AS chat_id, a.username AS username
-                                    FROM posts AS p
-                                    INNER JOIN channels AS c
-                                        ON p.channel = c.username
-                                    INNER JOIN people AS a
-                                        ON c.admin = a.username
-                                    WHERE message_id = ?`, [messageIdDb]))[0]
+            let adminUsername = await ctx.state.posts.getAdmin(messageIdDb)
+            let adminChatId = await ctx.state.people.get(adminUsername, ['chat_id'])
 
             // to the customer
-            let query = `SELECT p.caption, p.image_ids AS images, c.contact_text AS contactText
-                                FROM posts as p
-                                INNER JOIN channels as c
-                                    ON c.username = p.channel
-                                WHERE p.message_id = ?`
-            let postData = (await ctx.state.sql(query, [messageIdDb]))[0]
-            let caption = '<i>You have selected</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n' + postData.caption + '\n\n' + postData.contactText
-            let collage = JSON.parse(postData.images).collage
+            let postData = await ctx.state.posts.get(messageIdDb, ['caption', 'image_ids'])
+            let contactText = await ctx.state.channels.get(channel, 'contact_text')
+            let caption = '<i>You have selected</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n' + postData.caption + '\n\n' + contactText
+            let collage = JSON.parse(postData.image_ids).collage
             ctx.replyWithPhoto(collage, {
                 caption,
                 disable_web_page_preview: true,
@@ -34,7 +25,7 @@ async function handleStart(ctx) {
                     inline_keyboard: [
                         [
                             { text: 'Details', callback_data: 'details:' + messageIdDb },
-                            { text: 'Contact seller', url: 'https://t.me/' + person.username }
+                            { text: 'Contact seller', url: 'https://t.me/' + adminUsername }
                         ]
                     ]
                 }
@@ -43,7 +34,7 @@ async function handleStart(ctx) {
             // to the person (seller)
             let customerLink = `<a href="tg://user?id=${userId}">customer</a>`
             caption = `<i>You have a</i> ${customerLink} <i>who wants to buy</i> ${itemLink} <i>from</i> @${channel}. <i>They may contact you</i>.\n\n` + postData.caption
-            ctx.telegram.sendPhoto(person.chat_id, collage, {
+            ctx.telegram.sendPhoto(adminChatId, collage, {
                 caption,
                 parse_mode: 'html',
                 disable_web_page_preview: true,
@@ -61,17 +52,26 @@ async function handleStart(ctx) {
             ctx.reply('No message with that id was found.')
         }
     } else {
-        let people = (await ctx.state.sql('SELECT username FROM people')).map(p => p.username)
-        if (people.includes(username)) {
-            // person exists in db assumed
-            ctx.state.sql(`UPDATE people SET chat_id = ? WHERE username = ?`,
-                [ctx.chat.id, username])
+        if (ctx.state.isAdmin) {
             // store the chat id for the username
+            ctx.state.people.set(username, {chat_id: ctx.chat.id})
             ctx.reply('Welcome, now I can talk to you. Please send /post to post a new item.')
         } else {
             let reply = 'Welcome, please go to one of our channels '
-            let channels = (await ctx.state.sql('SELECT username FROM channels')).map(ch => ch.username)
-            for (let channel of channels) {
+            let channels = await ctx.state.channels.getUsernames()
+            let chosen = []
+            if (channels.length > limit) {
+                let limit = 5
+                // limit the number of shown channels to 5
+                for (let i = 0; i < limit; i++) {
+                    let selectedIndex = Math.round(Math.random()*channels.length)
+                    chosen.push(channels[selectedIndex])
+                    channels.splice(selectedIndex)
+                }
+            } else {
+                chosen = channels
+            }
+            for (let channel of chosen) {
                 reply += '@' + channel + ', '
             }
             reply = reply.slice(0, -2) + ' and select "Buy" on an item.'
