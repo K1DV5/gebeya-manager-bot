@@ -63,10 +63,9 @@ CREATE TRIGGER sale_count BEFORE UPDATE ON posts FOR EACH ROW BEGIN
     END IF;
 END //
 DELIMITER ;
-insert into people (username) values('Ntsuhwork');
-insert into channels (username, admin, license_expiry) values('mygeb', 'Ntsuhwork', '1572382800');
-/* insert into people (username) values('K1DV5'); */
-/* insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1572382800'); */
-/* insert into posts (message_id, title) values (45, 'አውርድ'); */
-/* insert into posts (message_id, title) values (45, '🍒foo'); */
-/* select title from posts; */
+/* insert into people (username) values('Ntsuhwork'); */
+/* insert into channels (username, admin, license_expiry) values('mygeb', 'Ntsuhwork', '1572382800'); */
+insert into people (username) values('K1DV5');
+insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1572382800');
+/* insert into posts (channel, message_id, title) values ('mygeb', 45, 'foo'); */
+/* select * from posts where channel = 'mygeb' AND message_id = 45; */

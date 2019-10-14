@@ -215,8 +215,8 @@ async function handlePostDraft(ctx) {
         }
     )
     // record the post
-    ctx.state.sql('INSERT INTO posts (message_id, channel, title, description, price, caption, image_ids, post_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [newMessageIdDb,
-        channel,
+    ctx.state.sql('INSERT INTO posts (channel, message_id, title, description, price, caption, image_ids, post_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [channel,
+        message.message_id,
         adminData.title,
         adminData.description,
         adminData.price,

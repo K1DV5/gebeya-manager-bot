@@ -3,9 +3,9 @@ async function handleStart(ctx) {
     let {id: userId, username} = ctx.update.message.from
     if (ctx.startPayload) {  // a button on a post was clicked
         let messageIdDb = ctx.startPayload.trim().replace('-', '/')
-        let message = (await ctx.state.sql('SELECT * FROM posts WHERE message_id = ?', [messageIdDb]))[0]
+        let [channel, postId] = messageIdDb.split('/')
+        let message = (await ctx.state.sql('SELECT * FROM posts WHERE channel = ? AND message_id = ?', [channel, postId]))[0]
         if (message) {
-            let [channel] = messageIdDb.split('/', 1)
             // send messages to both parties.
             let itemText = 'this item'
             let itemLink = `<a href="https://t.me/${messageIdDb}">${itemText}</a>`
@@ -15,15 +15,15 @@ async function handleStart(ctx) {
                                         ON p.channel = c.username
                                     INNER JOIN people AS a
                                         ON c.admin = a.username
-                                    WHERE message_id = ?`, [messageIdDb]))[0]
+                                    WHERE channel = ? AND message_id = ?`, [channel, postId]))[0]
 
             // to the customer
             let query = `SELECT p.caption, p.image_ids AS images, c.contact_text AS contactText
                                 FROM posts as p
                                 INNER JOIN channels as c
                                     ON c.username = p.channel
-                                WHERE p.message_id = ?`
-            let postData = (await ctx.state.sql(query, [messageIdDb]))[0]
+                                WHERE channel = ? AND p.message_id = ?`
+            let postData = (await ctx.state.sql(query, [channel, postId]))[0]
             let caption = '<i>You have selected</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n' + postData.caption + '\n\n' + postData.contactText
             let collage = JSON.parse(postData.images).collage
             ctx.replyWithPhoto(collage, {
