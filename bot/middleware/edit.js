@@ -37,7 +37,7 @@ async function handleEditPost(ctx) {
             let query = `UPDATE people
                             SET draft_price = (SELECT price FROM posts
                                 WHERE channel = SUBSTRING_INDEX(people.draft_destination, '/', 1)
-                                AND message_id = SUBSTRING_INDEX(people.draft_destination, '/', -1)),
+                                AND message_id = SUBSTRING_INDEX(people.draft_destination, '/', -1))
                          WHERE username = ?`
             await ctx.state.sql(query, [username])
         } else {
@@ -122,7 +122,7 @@ async function handleEditPost(ctx) {
                                removed_message_ids = ?,
                                draft_image_ids = (SELECT image_ids FROM posts
                                                     WHERE channel = SUBSTRING_INDEX(people.draft_destination, '/', 1)
-                                                    AND message_id = SUBSTRING_INDEX(people.draft_destination, '/', -1)),
+                                                    AND message_id = SUBSTRING_INDEX(people.draft_destination, '/', -1))
                             WHERE username = ?`, [messageIdDb, JSON.stringify({editOrigin: messageId}), username])
             let postUrl = 'https://t.me/' + messageIdDb
             let text = 'Editting <a href="' + postUrl + '">this post</a>, write the new title. You can send <b>skip</b> To keep the existing title.'

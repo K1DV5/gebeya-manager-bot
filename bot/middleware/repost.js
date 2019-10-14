@@ -2,7 +2,7 @@
 async function handleRepost(ctx) {
     let input = ctx.update.callback_query
     let [channel, postId] = input.data.split('/')
-    let query = `SELECT p.caption, p.image_ids as images, p.state, c.sold_template, c.license_expiry
+    let query = `SELECT p.caption, p.title, p.description, p.price, p.image_ids as images, p.state, c.sold_template, c.license_expiry
                  FROM posts as p
                  INNER JOIN channels AS c
                      ON c.username = p.channel
@@ -26,8 +26,8 @@ async function handleRepost(ctx) {
     let collageId = JSON.parse(postData.images).collage
     let message = await ctx.telegram.sendPhoto('@' + channel, collageId, {caption: postData.caption})
     let newMessageIdDb = channel + '/' + message.message_id
-    ctx.state.sql('INSERT INTO posts (channel, message_id, caption, image_ids) VALUES (?, ?, ?, ?)',
-        [channel, message.message_id, postData.caption, postData.images])
+    ctx.state.sql('INSERT INTO posts (channel, message_id, title, description, price, caption, image_ids) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [channel, message.message_id, postData.title, postData.description, postData.price, postData.caption, postData.images])
     let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + newMessageIdDb.replace('/', '-')
     ctx.telegram.editMessageReplyMarkup('@' + channel, message.message_id, undefined, {
         inline_keyboard: [
