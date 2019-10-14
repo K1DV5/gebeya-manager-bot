@@ -33,10 +33,9 @@ CREATE TABLE channels (username VARCHAR(255) PRIMARY KEY,
                        FOREIGN KEY (admin) REFERENCES people(username)
 );
 
-/* posts by the bot,
- message_id is in the form 'channel/message_id' because message_id's are only unique inside chats */
-CREATE TABLE posts (message_id VARCHAR(255) PRIMARY KEY,
-                    channel VARCHAR(255),
+/* posts by the bot, */
+CREATE TABLE posts (channel VARCHAR(255),
+                    message_id VARCHAR(255),
                     title VARCHAR(255),
                     description VARCHAR(2440),
                     price VARCHAR(255),
@@ -47,6 +46,7 @@ CREATE TABLE posts (message_id VARCHAR(255) PRIMARY KEY,
                     sold_date VARCHAR(128),
                     marked_sold INT DEFAULT 0,
                     state VARCHAR(255) DEFAULT 'available',  /* or 'sold' */
+                    PRIMARY KEY (channel, message_id),
                     FOREIGN KEY (channel) REFERENCES channels(username)
 );
 
