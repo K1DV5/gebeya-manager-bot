@@ -4,7 +4,7 @@
 ALTER DATABASE k1dv5com_tg_gebeya CHARACTER SET = 'utf8mb4' COLLATE ='utf8mb4_unicode_ci';
 SET NAMES utf8mb4;
 
-DROP TABLE IF EXISTS posts, channels, people;
+DROP TABLE IF EXISTS post_permissions, posts, channels, people;
 
 /* admins of channels */
 CREATE TABLE people (username VARCHAR(128) PRIMARY KEY,
@@ -47,6 +47,14 @@ CREATE TABLE posts (channel VARCHAR(128),
                     FOREIGN KEY (channel) REFERENCES channels(username)
 ) ENGINE = INNODB;
 
+CREATE TABLE post_permissions (
+    person varchar(255),
+    channel varchar(255),
+    PRIMARY KEY (person, channel),
+    FOREIGN KEY (channel) REFERENCES channels(username),
+    FOREIGN KEY (person) REFERENCES people(username)
+);
+
 /* trigger for setting the default value for the contact text of channels */
 DELIMITER //
 CREATE TRIGGER default_contact_text BEFORE INSERT ON channels FOR EACH ROW BEGIN
@@ -60,4 +68,3 @@ DELIMITER ;
 insert into people (username, chat_id) values('K1DV5', '479319265');
 insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1572382800');
 /* insert into posts (channel, message_id, title) values ('mygeb', 45, 'foo'); */
-/* select * from posts where channel = 'mygeb' AND message_id = 45; */
