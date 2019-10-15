@@ -7,7 +7,6 @@ const {
     makeCollage
 } = require('../utils')
 const fs = require('fs')
-const util = require('util')
 const path = require('path')
 
 let photosReceived = {
