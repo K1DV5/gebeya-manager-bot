@@ -1,4 +1,5 @@
 const mysql = require('mysql')
+const os = require('os')
 // const handlers = require('./handlers')
 const Telegraf = require('telegraf')
 // the handlers
