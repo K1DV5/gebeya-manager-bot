@@ -29,7 +29,7 @@ CREATE TABLE channels (username VARCHAR(255) PRIMARY KEY,
                        caption_template VARCHAR(1024) DEFAULT ':title\n\n:description\n\nPrice: :price',
                        sold_template VARCHAR(1024) DEFAULT '===( SOLD )===\n\n:caption\n\n===( SOLD )===',
                        license_expiry VARCHAR(255),
-                       description_bullets VARCHAR(12) DEFAULT 'none',
+                       description_bullet VARCHAR(12) DEFAULT ' • ',
                        FOREIGN KEY (admin) REFERENCES people(username)
 );
 

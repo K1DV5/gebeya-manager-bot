@@ -187,7 +187,7 @@ async function draftToPostable(username, queryFunc, type) {
                             p.removed_message_ids as removedIds,
                             p.conversation as stage,
                             c.caption_template AS template,
-                            c.description_bullets as bullets
+                            c.description_bullet as bullet
                      FROM people AS p
                      INNER JOIN channels AS c
                         ON c.username = p.draft_destination
@@ -196,7 +196,7 @@ async function draftToPostable(username, queryFunc, type) {
     } else if (type === 'edit') { // for the edit caption functionality
         // get the channel's caption template
         let channel = (await queryFunc('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination.split('/')[0]
-        let channelData = (await queryFunc('SELECT caption_template, description_bullets FROM channels WHERE username = ?', [channel]))[0]
+        let channelData = (await queryFunc('SELECT caption_template, description_bullet FROM channels WHERE username = ?', [channel]))[0]
         let query = `SELECT draft_destination as destination,
                             draft_title AS title,
                             draft_description AS description,
@@ -207,12 +207,12 @@ async function draftToPostable(username, queryFunc, type) {
                      FROM people WHERE username = ?`
         adminData = (await queryFunc(query, [username]))[0]
         adminData.template = channelData.caption_template
-        adminData.bullets = channelData.description_bullets
+        adminData.bullet = channelData.description_bullet
     }
     if (adminData) {
         adminData.caption = adminData.template
             .replace(/:title\b/, adminData.title)
-            .replace(/:description\b/, adminData.description.replace(/^/gm, (adminData.bullets === 'none'? '': adminData.bullets)))
+            .replace(/:description\b/, adminData.description.replace(/^\./gm, adminData.bullet))
             .replace(/:price\b/, adminData.price)
         adminData.images = adminData.images ? JSON.parse(adminData.images) : null
         adminData.removedIds = adminData.removedIds ? JSON.parse(adminData.removedIds) : null
