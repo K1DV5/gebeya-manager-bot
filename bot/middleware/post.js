@@ -1,7 +1,7 @@
 const {
     makeKeyboardTiles,
     draftToPostable,
-    downloadPhotos,
+    downloadFile,
     watermarkDir,
     rmdirWithFiles,
     makeCollage
@@ -115,7 +115,9 @@ async function handlePhotoStage(ctx) {
     if (ctx.updateSubTypes.includes('photo')) {
         let photo = ctx.update.message.photo
         let fileProps = await ctx.telegram.getFile(photo[photo.length-1].file_id)
-        await downloadPhotos(imagesDir, [fileProps], ctx.telegram.token)
+        let filePath = path.join(imagesDir, path.basename(fileProps.file_path))
+        let url = `https://api.telegram.org/file/bot${ctx.telegram.token}/${fileProps.file_path}`
+        await downloadFile(url, filePath)
         ctx.reply('Received. Send more or /end it.')
     } else if (ctx.updateSubTypes.includes('text') && ctx.update.message.text === '/end') {
         let channel = (await ctx.state.sql('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination

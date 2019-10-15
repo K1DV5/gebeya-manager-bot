@@ -68,19 +68,6 @@ function downloadFile(url, filePath) {
     })
 }
 
-async function downloadPhotos(destDir, files, token) {
-    let downloaded = []
-    if (files.constructor === Array) {
-        await Promise.all(files.map(async file => {
-            let filePath = path.join(destDir, path.basename(file.file_path))
-            let url = `https://api.telegram.org/file/bot${token}/${file.file_path}`
-            await downloadFile(url, filePath)
-            downloaded.push(filePath)
-        }))
-    }
-    return downloaded
-}
-
 function watermarkProps(width, height, proportion = 0.3) {
     let watermarkPos = 1 - proportion
     let edgeOffset = proportion/2
