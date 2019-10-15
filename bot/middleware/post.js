@@ -9,9 +9,6 @@ const {
 const fs = require('fs')
 const path = require('path')
 
-let photosReceived = {
-}
-
 function post(ctx) {
     if (ctx.state.isAdmin) {
         let stage = ctx.state.stage
@@ -107,24 +104,20 @@ function handlePriceStage(ctx) {
             resize_keyboard: true
         }
     })
+    // clear the images dir for the new photos
+    let imagesDir = path.join(ctx.state.imagesDir, username, 'draft-images')
+    rmdirWithFiles(imagesDir)
 }
 
 async function handlePhotoStage(ctx) {
     let username = ctx.from.username
+    let imagesDir = path.join(ctx.state.imagesDir, username, 'draft-images')
     if (ctx.updateSubTypes.includes('photo')) {
         let photo = ctx.update.message.photo
         let fileProps = await ctx.telegram.getFile(photo[photo.length-1].file_id)
-        if (photosReceived[username]) {
-            photosReceived[username].push(fileProps)
-        } else {
-            photosReceived[username] = [fileProps]
-        }
+        await downloadPhotos(imagesDir, [fileProps], ctx.telegram.token)
+        ctx.reply('Received. Send more or /end it.')
     } else if (ctx.updateSubTypes.includes('text') && ctx.update.message.text === '/end') {
-        // get the accumulated file props
-        let filesToDown = photosReceived[username]
-        // clear the object
-        photosReceived[username] = undefined
-        let imagesDir = path.join(ctx.state.imagesDir, username, 'draft-images')
         let channel = (await ctx.state.sql('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination
         let logoImg = path.join(ctx.state.imagesDir, username, 'logo-' + channel + '.png')
         try {
@@ -136,9 +129,8 @@ async function handlePhotoStage(ctx) {
             }
         }
         let draftCollage = path.join(ctx.state.imagesDir, username, 'draft-collage.jpg')
-        let images = await downloadPhotos(imagesDir, filesToDown, ctx.telegram.token)
         await makeCollage(imagesDir, draftCollage, logoImg)  // make a collage and watermark it
-        await watermarkDir(imagesDir, imagesDir, logoImg)  // watermark every image
+        let images = await watermarkDir(imagesDir, imagesDir, logoImg)  // watermark every image
         let removedAtPost = [  // messages removed when the draft is posted
             // intro to the watermarked images preview
             (await ctx.reply('The individual images will look like this...', {

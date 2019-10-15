@@ -56,7 +56,7 @@ function downloadFile(url, filePath) {
         await fs.promises.mkdir(path.dirname(filePath), {recursive: true})
         let fileStream = fs.createWriteStream(filePath)
         fileStream.on('finish', () => {fileStream.close(); resolve(filePath)})
-        fileStream.on('error', () => {fs.promises.unlink(filePath); reject()})
+        fileStream.on('error', (err) => {fs.promises.unlink(filePath); reject(err)})
 
         https.get(url, response => {
             if (response.statusCode === 200) {
@@ -64,7 +64,7 @@ function downloadFile(url, filePath) {
             } else {
                 reject(response.statusCode)
             }
-        }).on('error', () => {fs.promises.unlink(filePath); reject()})
+        }).on('error', (err) => {fs.promises.unlink(filePath); reject(err)})
     })
 }
 
@@ -141,9 +141,13 @@ async function watermark(image, dest, watermarkImg) {
 }
 
 async function watermarkDir(sourceDir, destDir, watermarkImg) {
+    let filePaths = []
     for (let file of await fs.promises.readdir(sourceDir)) {
-        watermark(path.join(sourceDir, file), path.join(destDir, file), watermarkImg)
+        let filePath = path.join(sourceDir, file)
+        watermark(filePath, path.join(destDir, file), watermarkImg)
+        filePaths.push(filePath)
     }
+    return filePaths
 }
 
 async function makeCollage(sources, dest, watermarkImg = undefined, width = 720) {
@@ -165,12 +169,18 @@ async function makeCollage(sources, dest, watermarkImg = undefined, width = 720)
 }
 
 async function rmdirWithFiles(dir) {
-    let files = await fs.promises.readdir(dir)
-    await Promise.all(files.map(async file => {
-        let filePath = path.join(dir, file)
-        await fs.promises.unlink(filePath)
-    }))
-    fs.promises.rmdir(dir)
+    try {
+        let files = await fs.promises.readdir(dir)
+        await Promise.all(files.map(async file => {
+            let filePath = path.join(dir, file)
+            await fs.promises.unlink(filePath)
+        }))
+        fs.promises.rmdir(dir)
+    } catch(err) {
+        if (err.code !== 'ENOENT') {
+            throw err
+        }
+    }
 }
 
 async function draftToPostable(username, queryFunc, type) {
