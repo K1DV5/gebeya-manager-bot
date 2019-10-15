@@ -1,7 +1,7 @@
 /* DATA MODEL FOR THE BOT */
 
 /* escape from the encoding abomination hell */
-ALTER DATABASE my_gebeya CHARACTER SET = 'utf8mb4' COLLATE ='utf8mb4_unicode_ci';
+ALTER DATABASE k1dv5com_tg_gebeya CHARACTER SET = 'utf8mb4' COLLATE ='utf8mb4_unicode_ci';
 SET NAMES utf8mb4;
 
 DROP TABLE IF EXISTS posts, channels, people;

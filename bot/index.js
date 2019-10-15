@@ -17,13 +17,21 @@ const token = '949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw';
 
 const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
 
-let connection = mysql.createConnection({
-    host: 'localhost',
-    user: 'bot',
-    password : 'secret',
-    database: 'my_gebeya',
-    charset: 'utf8mb4', // escape encoding hell
-})
+let connection
+if (os.hostname() === 'K1DV5') {
+    connection = mysql.createConnection({
+        host: 'localhost',
+        user: 'k1dv5com_tg_bot',
+        database: 'k1dv5com_tg_gebeya'
+    })
+} else {
+    connection = mysql.createConnection({
+        host: 'cpanel.k1dv5.com',
+        user: 'k1dv5com_tg_bot',
+        password: 'tg_bot_pass',
+        database: 'k1dv5com_tg_gebeya'
+    })
+}
 
 connection.connect()
 
