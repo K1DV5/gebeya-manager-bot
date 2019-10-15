@@ -79,4 +79,4 @@ bot.on('callback_query', callback)
 
 bot.launch().then(() => console.log('listening...')).catch((err)=>{console.log(err.message)})
 
-// connection.end()
+connection.end()

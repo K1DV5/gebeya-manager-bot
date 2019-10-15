@@ -7,7 +7,7 @@ SET NAMES utf8mb4;
 DROP TABLE IF EXISTS posts, channels, people;
 
 /* admins of channels */
-CREATE TABLE people (username VARCHAR(255) PRIMARY KEY,
+CREATE TABLE people (username VARCHAR(128) PRIMARY KEY,
                      chat_id VARCHAR(255),
                      draft_title VARCHAR(255),
                      draft_description VARCHAR(3000),
@@ -20,22 +20,22 @@ CREATE TABLE people (username VARCHAR(255) PRIMARY KEY,
                      preview_post_message_id VARCHAR(255),
                      settings_channel VARCHAR(255),
                      conversation VARCHAR(255) /* where the person is in the conversation */
-);
+) ENGINE = INNODB;
 
 /* channels owned by admins, an admin can have more than one channel */
-CREATE TABLE channels (username VARCHAR(255) PRIMARY KEY,
-                       admin VARCHAR(255),
+CREATE TABLE channels (username VARCHAR(128) PRIMARY KEY,
+                       admin VARCHAR(128),
                        contact_text VARCHAR(255),
                        caption_template VARCHAR(1024) DEFAULT ':title\n\n:description\n\nPrice: :price',
                        sold_template VARCHAR(1024) DEFAULT '===( SOLD )===\n\n:caption\n\n===( SOLD )===',
                        license_expiry VARCHAR(255),
                        description_bullet VARCHAR(12) DEFAULT ' • ',
                        FOREIGN KEY (admin) REFERENCES people(username)
-);
+) ENGINE = INNODB;
 
 /* posts by the bot, */
-CREATE TABLE posts (channel VARCHAR(255),
-                    message_id VARCHAR(255),
+CREATE TABLE posts (channel VARCHAR(128),
+                    message_id VARCHAR(96),
                     title VARCHAR(255),
                     description VARCHAR(2440),
                     price VARCHAR(255),
@@ -48,7 +48,7 @@ CREATE TABLE posts (channel VARCHAR(255),
                     state VARCHAR(255) DEFAULT 'available',  /* or 'sold' */
                     PRIMARY KEY (channel, message_id),
                     FOREIGN KEY (channel) REFERENCES channels(username)
-);
+) ENGINE = INNODB;
 
 /* trigger for setting the default value for the contact text of channels */
 DELIMITER //
