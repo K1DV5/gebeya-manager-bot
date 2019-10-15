@@ -1,5 +1,6 @@
 const mysql = require('mysql')
 const os = require('os')
+const path = require('path')
 // const handlers = require('./handlers')
 const Telegraf = require('telegraf')
 // the handlers
@@ -14,9 +15,6 @@ const doc = require('./middleware/document')
 const callback = require('./middleware/callback')
 
 const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
-
-// always change the working dir to the __dirname
-process.chdir(__dirname)
 
 let connection
 let token
@@ -58,7 +56,7 @@ bot.use(async (ctx, next) => { // set necessary variables
     ctx.state.sql = queryDb
     ctx.state.admins = SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES
     ctx.state.fallbackReply = 'Error, don\'t know what you want to do. Maybe you need /help'
-    ctx.state.imagesDir = '../images-staging'
+    ctx.state.imagesDir = path.join(__dirname, '../images-staging')
     let channelAdmins = (await queryDb('SELECT username FROM people')).map(p => p.username)
     let from = ctx.from.username
     if (channelAdmins.includes(from)) {
