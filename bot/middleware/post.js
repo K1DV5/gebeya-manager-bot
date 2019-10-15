@@ -86,7 +86,7 @@ function handleTitleStage(ctx) {
     let title = ctx.message.text
     ctx.state.sql('UPDATE people SET draft_title = ?, conversation = ? WHERE username = ?',
         [title, 'post.description', username])
-    ctx.reply('Write the description')
+    ctx.reply('Write the description. You can make bulleted lists easily by beginning new lines with . (dot) and it will be replaced with a real bullet character. You can also change the character in /settings => "Description bullet".')
 }
 
 function handleDescriptionStage(ctx) {
