@@ -13,19 +13,19 @@ const text = require('./middleware/text')
 const doc = require('./middleware/document')
 const callback = require('./middleware/callback')
 
-
-const token = '949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw';
-
 const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
 
 let connection
+let token
 if (os.hostname() === 'K1DV5') {
+    token = '959496597:AAEx1xGOKOnFY3gmk6LsUyrg3LaXhAFy7gE'
     connection = mysql.createConnection({
         host: 'localhost',
         user: 'k1dv5com_tg_bot',
         database: 'k1dv5com_tg_gebeya'
     })
 } else {
+    token = '949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw';
     connection = mysql.createConnection({
         host: 'cpanel.k1dv5.com',
         user: 'k1dv5com_tg_bot',
@@ -79,4 +79,4 @@ bot.on('callback_query', callback)
 
 bot.launch().then(() => console.log('listening...')).catch((err)=>{console.log(err.message)})
 
-connection.end()
+// connection.end()
