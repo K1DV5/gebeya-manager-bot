@@ -54,7 +54,7 @@ async function handleSettings(ctx) {
 const settingSpectficChannelParams = {
     logo: {
         next: 'settings.logo.document',
-        text: (ctx, channel) => 'You will be changing the logo for @' + channel + ', send the logo AS A DOCUMENT because Telegam will remove the transparency if you send it as a photo.'
+        text: (ctx, channel) => 'You will be changing the logo for @' + channel + ', send the logo AS A FILE because Telegam will remove the transparency if you send it as a photo.'
     },
     caption_template: {
         next: 'settings.caption_template.text',
