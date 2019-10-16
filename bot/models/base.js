@@ -1,24 +1,15 @@
-const mysql = require('mysql')
-
-let connection = mysql.createConnection({
-    host: 'localhost',
-    user: 'bot',
-    password : 'secret',
-    database: 'my_gebeya'
-})
-
-connection.connect()
 
 class BaseModel {
-    constructor(table, cols) {
+    constructor(dbConn, table, cols) {
         this.cols = cols
         this.table = table
+        this.dbConn = dbConn
     }
 
     sql(sql, args) {
         // process sql query and return the result
         return new Promise((resolve) => {
-            connection.query(sql, args, (error, results) => {
+            this.dbConn.query(sql, args, (error, results) => {
                 if (error) {
                     console.log(error.message)
                 } else if (results) {

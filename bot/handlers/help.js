@@ -11,7 +11,7 @@ let helpDetails = {
     license: 'Command /license\n\nThis command shows the license information of your registered channels. You can see when it will expire (or if it has.) Licenses are shown per channel.\n\nWhen your channel\'s license expires, you will not be able to post new items, change settings, edit or repost existing items. However, already posted items will continue to be functional. You will get notifications when someone selects your item, you can mark an item sold (But not undo it).',
 }
 
-function help(ctx) {
+function handleHelp(ctx) {
     let text = ctx.update.message.text
     if (ctx.state.isAdmin) {
         if (text === '/help') {
@@ -34,4 +34,6 @@ function help(ctx) {
     }
 }
 
-module.exports = help
+module.exports = {
+    handleHelp
+}

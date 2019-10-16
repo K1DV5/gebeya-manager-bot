@@ -80,4 +80,6 @@ async function handleStart(ctx) {
     }
 }
 
-module.exports = handleStart
+module.exports = {
+    handleStart
+}

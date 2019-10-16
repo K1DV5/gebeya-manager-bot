@@ -16,4 +16,6 @@ async function handleLicense(ctx) {
     }
 }
 
-module.exports = handleLicense
+module.exports = {
+    handleLicense
+}

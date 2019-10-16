@@ -1,7 +1,7 @@
 const BaseModel = require('./base')
 
 class channels extends BaseModel {
-    constructor() {
+    constructor(dbConn) {
         let table = 'channels'
         let cols = [
             'username',
@@ -11,7 +11,7 @@ class channels extends BaseModel {
             'sold_template',
             'license_expiry',
         ]
-        super(table, cols)
+        super(dbConn, table, cols)
     }
 
     async getUsernames() {
