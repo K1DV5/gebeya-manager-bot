@@ -7,7 +7,9 @@ async function handleEditPost(ctx) {
         let text = ctx.update.message.text
         if (text.trim() === 'skip') {
             let query = `UPDATE people
-                            SET draft_title = (SELECT title FROM posts WHERE message_id = people.draft_destination),
+                            SET draft_title = (SELECT title FROM posts
+                                WHERE channel = SUBSTRING_INDEX(people.draft_destination, '/', 1)
+                                AND message_id = SUBSTRING_INDEX(people.draft_destination, '/', -1)),
                             conversation = "edit.description"
                          WHERE username = ?`
             ctx.state.sql(query, [username])
@@ -19,7 +21,9 @@ async function handleEditPost(ctx) {
         let text = ctx.update.message.text
         if (text.trim() === 'skip') {
             let query = `UPDATE people
-                            SET draft_description = (SELECT description FROM posts WHERE message_id = people.draft_destination),
+                            SET draft_description = (SELECT description FROM posts
+                                WHERE channel = SUBSTRING_INDEX(people.draft_destination, '/', 1)
+                                AND message_id = SUBSTRING_INDEX(people.draft_destination, '/', -1)),
                             conversation = "edit.price"
                          WHERE username = ?`
             ctx.state.sql(query, [username])
@@ -31,7 +35,9 @@ async function handleEditPost(ctx) {
         let text = ctx.update.message.text
         if (text.trim() === 'skip') {
             let query = `UPDATE people
-                            SET draft_price = (SELECT price FROM posts WHERE message_id = people.draft_destination),
+                            SET draft_price = (SELECT price FROM posts
+                                WHERE channel = SUBSTRING_INDEX(people.draft_destination, '/', 1)
+                                AND message_id = SUBSTRING_INDEX(people.draft_destination, '/', -1))
                          WHERE username = ?`
             await ctx.state.sql(query, [username])
         } else {
@@ -56,6 +62,7 @@ async function handleEditPost(ctx) {
                            WHERE username = ?`, [JSON.stringify(removedIds), username] )
     } else if (stage === 'edit.ready') {
         let adminData = await draftToPostable(username, ctx.state.sql, 'edit')
+        let [channel, postId] = adminData.destination.split('/')
         ctx.state.sql(`UPDATE people SET draft_title = NULL,
                               draft_description = NULL,
                               draft_destination = NULL,
@@ -68,12 +75,11 @@ async function handleEditPost(ctx) {
                                         description = ?,
                                         price = ?,
                                         caption = ?
-                                        WHERE message_id = ?`,
-            [adminData.title, adminData.description, adminData.price, adminData.caption, adminData.destination])
+                                        WHERE channel = ? AND message_id = ?`,
+            [adminData.title, adminData.description, adminData.price, adminData.caption, channel, postId])
         let input = ctx.update.callback_query
         let chatId = ctx.update.callback_query.from.id
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
-        let [channel, postId] = adminData.destination.split('/')
         let deletedMessage
         if (input.data === 'save') {
             deletedMessage = adminData.removedIds.editOrigin
@@ -101,20 +107,22 @@ async function handleEditPost(ctx) {
     } else {
         let input = ctx.update.callback_query
         let messageIdDb = input.data
-        let channel = messageIdDb.split('/')[0]
+        let [channel, postId] = messageIdDb.split('/')
         let licenseValid = (await ctx.state.sql('SELECT license_expiry FROM channels WHERE username = ?', [channel]))[0].license_expiry*1 > ctx.update.callback_query.message.date
         if (!licenseValid) {
             ctx.reply('Your license for this channel has expired. Contact @' + ctx.state.admins + ' for renewal.')
             return
         }
-        let query = 'SELECT 1 FROM posts WHERE message_id = ?'
-        let postExists = (await ctx.state.sql(query, [messageIdDb]))[0]
+        let query = 'SELECT 1 FROM posts WHERE channel = ? AND message_id = ?'
+        let postExists = (await ctx.state.sql(query, [channel, postId]))[0]
         if (postExists) {
             let messageId = ctx.update.callback_query.message.message_id
             ctx.state.sql(`UPDATE people SET conversation = "edit.title",
                                draft_destination = ?,
                                removed_message_ids = ?,
-                               draft_image_ids = (SELECT image_ids FROM posts WHERE message_id = people.draft_destination)
+                               draft_image_ids = (SELECT image_ids FROM posts
+                                                    WHERE channel = SUBSTRING_INDEX(people.draft_destination, '/', 1)
+                                                    AND message_id = SUBSTRING_INDEX(people.draft_destination, '/', -1))
                             WHERE username = ?`, [messageIdDb, JSON.stringify({editOrigin: messageId}), username])
             let postUrl = 'https://t.me/' + messageIdDb
             let text = 'Editting <a href="' + postUrl + '">this post</a>, write the new title. You can send <b>skip</b> To keep the existing title.'

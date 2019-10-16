@@ -41,7 +41,7 @@ async function handleSettings(ctx) {
                     ],
                     [
                         { text: 'Sold template', callback_data: 'settings:sold_template' },
-                        { text: 'Description bullets', callback_data: 'settings:description_bullets' },
+                        { text: 'Description bullet', callback_data: 'settings:description_bullet' },
                     ]
                 ]
             }
@@ -54,7 +54,7 @@ async function handleSettings(ctx) {
 const settingSpectficChannelParams = {
     logo: {
         next: 'settings.logo.document',
-        text: (ctx, channel) => 'You will be changing the logo for @' + channel + ', send the logo AS A DOCUMENT because Telegam will remove the transparency if you send it as a photo.'
+        text: (ctx, channel) => 'You will be changing the logo for @' + channel + ', send the logo AS A FILE because Telegam will remove the transparency if you send it as a photo.'
     },
     caption_template: {
         next: 'settings.caption_template.text',
@@ -86,11 +86,11 @@ const settingSpectficChannelParams = {
             return text
         }
     },
-    description_bullets: {
-        next: 'settings.description_bullets.text',
+    description_bullet: {
+        next: 'settings.description_bullet.text',
         text: async (ctx, channel) => {
-            let currentBullets = (await ctx.state.sql('SELECT description_bullets FROM channels WHERE username = ?', [channel]))[0].description_bullets
-            let text = '<i>You will be changing the bullet point characters if you mostly list features of the item you post on</i> @' + channel + ', <i>here is the current one. Send a new phrase that you want to appear before every line of the description. If you want to make it empty, send</i> <b>none</b>\n\n' + currentBullets
+            let currentBullet = (await ctx.state.sql('SELECT description_bullet FROM channels WHERE username = ?', [channel]))[0].description_bullet
+            let text = '<i>You will be changing the bullet point characters in the description of the item you post on</i> @' + channel + ', <i>here is the current one. Send a new phrase that you want to appear when you begin lines with "." (dot) in the description.</i>\n\n' + currentBullet
             return text
         }
     }
@@ -113,9 +113,9 @@ const settingSpectficIntroParams = {
         text: 'Which channel\'s contact text do you want to change?',
         next: 'settings:contact_text.'
     },
-    description_bullets: {
-        text: 'Which channel\'s description bullets do you want to change?',
-        next: 'settings:description_bullets'
+    description_bullet: {
+        text: 'Which channel\'s description bullet do you want to change?',
+        next: 'settings:description_bullet'
     }
 }
 
@@ -186,12 +186,12 @@ async function handleSettingText(ctx) {
         } else {
             ctx.reply('You have to include ":caption", try again.')
         }
-    } else if (stage === 'settings.description_bullets.text') {
+    } else if (stage === 'settings.description_bullet.text') {
         let text = ctx.update.message.text
         let channel = (await ctx.state.sql('SELECT settings_channel FROM people WHERE username = ?', [username]))[0].settings_channel
-        ctx.state.sql('UPDATE channels SET description_bullets = ? WHERE username = ?', [text, channel])
+        ctx.state.sql('UPDATE channels SET description_bullet = ? WHERE username = ?', [text, channel])
         ctx.state.sql('UPDATE people SET conversation = NULL WHERE username = ?', [username])
-        ctx.reply('@' + channel + "'s description bullets has been updated. The new one will be shown the next time you post something.")
+        ctx.reply('@' + channel + "'s description bullet has been updated. The new one will be shown the next time you post something.")
     }
 }
 

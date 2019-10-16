@@ -56,7 +56,7 @@ function downloadFile(url, filePath) {
         await fs.promises.mkdir(path.dirname(filePath), {recursive: true})
         let fileStream = fs.createWriteStream(filePath)
         fileStream.on('finish', () => {fileStream.close(); resolve(filePath)})
-        fileStream.on('error', () => {fs.promises.unlink(filePath); reject()})
+        fileStream.on('error', (err) => {fs.promises.unlink(filePath); reject(err)})
 
         https.get(url, response => {
             if (response.statusCode === 200) {
@@ -64,21 +64,8 @@ function downloadFile(url, filePath) {
             } else {
                 reject(response.statusCode)
             }
-        }).on('error', () => {fs.promises.unlink(filePath); reject()})
+        }).on('error', (err) => {fs.promises.unlink(filePath); reject(err)})
     })
-}
-
-async function downloadPhotos(destDir, files, token) {
-    let downloaded = []
-    if (files.constructor === Array) {
-        await Promise.all(files.map(async file => {
-            let filePath = path.join(destDir, path.basename(file.file_path))
-            let url = `https://api.telegram.org/file/bot${token}/${file.file_path}`
-            await downloadFile(url, filePath)
-            downloaded.push(filePath)
-        }))
-    }
-    return downloaded
 }
 
 function watermarkProps(width, height, proportion = 0.3) {
@@ -143,9 +130,13 @@ async function watermark(image, dest, watermarkImg) {
 }
 
 async function watermarkDir(sourceDir, destDir, watermarkImg) {
+    let filePaths = []
     for (let file of await fs.promises.readdir(sourceDir)) {
-        watermark(path.join(sourceDir, file), path.join(destDir, file), watermarkImg)
+        let filePath = path.join(sourceDir, file)
+        watermark(filePath, path.join(destDir, file), watermarkImg)
+        filePaths.push(filePath)
     }
+    return filePaths
 }
 
 async function makeCollage(sources, dest, watermarkImg = undefined, width = 720) {
@@ -167,12 +158,18 @@ async function makeCollage(sources, dest, watermarkImg = undefined, width = 720)
 }
 
 async function rmdirWithFiles(dir) {
-    let files = await fs.promises.readdir(dir)
-    await Promise.all(files.map(async file => {
-        let filePath = path.join(dir, file)
-        await fs.promises.unlink(filePath)
-    }))
-    fs.promises.rmdir(dir)
+    try {
+        let files = await fs.promises.readdir(dir)
+        await Promise.all(files.map(async file => {
+            let filePath = path.join(dir, file)
+            await fs.promises.unlink(filePath)
+        }))
+        fs.promises.rmdir(dir)
+    } catch(err) {
+        if (err.code !== 'ENOENT') {
+            throw err
+        }
+    }
 }
 
 async function draftToPostable(username, queryFunc, type) {
@@ -189,7 +186,7 @@ async function draftToPostable(username, queryFunc, type) {
                             p.removed_message_ids as removedIds,
                             p.conversation as stage,
                             c.caption_template AS template,
-                            c.description_bullets as bullets
+                            c.description_bullet as bullet
                      FROM people AS p
                      INNER JOIN channels AS c
                         ON c.username = p.draft_destination
@@ -198,7 +195,7 @@ async function draftToPostable(username, queryFunc, type) {
     } else if (type === 'edit') { // for the edit caption functionality
         // get the channel's caption template
         let channel = (await queryFunc('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination.split('/')[0]
-        let channelData = (await queryFunc('SELECT caption_template, description_bullets FROM channels WHERE username = ?', [channel]))[0]
+        let channelData = (await queryFunc('SELECT caption_template, description_bullet FROM channels WHERE username = ?', [channel]))[0]
         let query = `SELECT draft_destination as destination,
                             draft_title AS title,
                             draft_description AS description,
@@ -209,12 +206,12 @@ async function draftToPostable(username, queryFunc, type) {
                      FROM people WHERE username = ?`
         adminData = (await queryFunc(query, [username]))[0]
         adminData.template = channelData.caption_template
-        adminData.bullets = channelData.description_bullets
+        adminData.bullet = channelData.description_bullet
     }
     if (adminData) {
         adminData.caption = adminData.template
             .replace(/:title\b/, adminData.title)
-            .replace(/:description\b/, adminData.description.replace(/^/gm, (adminData.bullets === 'none'? '': adminData.bullets)))
+            .replace(/:description\b/, adminData.description.replace(/^\./gm, adminData.bullet))
             .replace(/:price\b/, adminData.price)
         adminData.images = adminData.images ? JSON.parse(adminData.images) : null
         adminData.removedIds = adminData.removedIds ? JSON.parse(adminData.removedIds) : null
@@ -229,7 +226,6 @@ module.exports = {
     makeCollage,
     watermarkDir,
     downloadFile,
-    downloadPhotos,
     rmdirWithFiles,
     makeKeyboardTiles
 }

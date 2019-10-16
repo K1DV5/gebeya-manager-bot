@@ -3,9 +3,9 @@ async function handleStart(ctx) {
     let {id: userId, username} = ctx.update.message.from
     if (ctx.startPayload) {  // a button on a post was clicked
         let messageIdDb = ctx.startPayload.trim().replace('-', '/')
-        let message = await ctx.state.posts.get(messageIdDb)
+        let [channel, postId] = messageIdDb.split('/')
+        let message = (await ctx.state.sql('SELECT * FROM posts WHERE channel = ? AND message_id = ?', [channel, postId]))[0]
         if (message) {
-            let [channel] = messageIdDb.split('/', 1)
             // send messages to both parties.
             let itemText = 'this item'
             let itemLink = `<a href="https://t.me/${messageIdDb}">${itemText}</a>`

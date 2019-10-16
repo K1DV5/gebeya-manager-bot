@@ -6,8 +6,8 @@ async function handleSoldToggle(ctx) {
                  FROM posts as p
                  INNER JOIN channels AS c
                  ON c.username = p.channel
-                 WHERE p.message_id = ?`
-    let post = (await ctx.state.sql(query, messageIdDb))[0]
+                 WHERE p.channel = ? AND p.message_id = ?`
+    let post = (await ctx.state.sql(query, [channel, messageId]))[0]
     let captionEntities = ctx.update.callback_query.message.caption_entities
     if (post.state === 'available' || ctx.state.forceSold) {
         let soldText = post.sold_template.replace(/:caption\b/, post.caption)
@@ -16,7 +16,7 @@ async function handleSoldToggle(ctx) {
         } catch {}
         if (ctx.state.forceSold === undefined) {
             // change the state
-            ctx.state.sql('UPDATE posts SET state = "sold", sold_date = ? WHERE message_id = ?', [ctx.update.callback_query.message.date, messageIdDb])
+            ctx.state.sql('UPDATE posts SET state = "sold", sold_date = ? WHERE channel = ? AND message_id = ?', [ctx.update.callback_query.message.date, channel, messageId])
             // replace the button with undo
             let userId = captionEntities.filter(e => e.type == 'text_mention')[0].user.id
             let itemLink = '<a href="' + captionEntities.filter(e => e.type == 'text_link')[0].url + '">this item</a>'
@@ -48,7 +48,7 @@ async function handleSoldToggle(ctx) {
             inline_keyboard: [ [ { text: 'Buy', url: startUrl } ] ]
         })
         // change the state
-        ctx.state.sql('UPDATE posts SET state = "available" WHERE message_id = ?', [messageIdDb])
+        ctx.state.sql('UPDATE posts SET state = "available" WHERE channel = ? AND message_id = ?', [channel, messageId])
         // replace the button with undo
         let userId = captionEntities.filter(e => e.type == 'text_mention')[0].user.id
         let itemLink = '<a href="' + captionEntities.filter(e => e.type == 'text_link')[0].url + '">this item</a>'

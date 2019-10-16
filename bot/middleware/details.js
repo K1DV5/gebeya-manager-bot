@@ -1,7 +1,7 @@
 
 async function handleDetails(ctx) {  // details callback
-    let messageIdDb = ctx.update.callback_query.data
-    let messageDetails = (await ctx.state.sql('SELECT * FROM posts WHERE message_id = ?', [messageIdDb]))[0]
+    let [channel, postId] = ctx.update.callback_query.data.split('/')
+    let messageDetails = (await ctx.state.sql('SELECT * FROM posts WHERE channel = ? AND message_id = ?', [channel, postId]))[0]
     if (messageDetails && messageDetails.state === 'available') {
         // let person = (await ctx.state.sql(`SELECT a.username
         //                         FROM posts AS p
@@ -9,8 +9,8 @@ async function handleDetails(ctx) {  // details callback
         //                             ON p.channel = c.username
         //                         INNER JOIN people AS a
         //                             ON c.admin = a.username
-        //                         WHERE message_id = ?`,
-        //                         [messageIdDb]))[0]
+        //                         WHERE channel = ? AND message_id = ?`,
+        //                         [channel, postId]))[0]
         let images = JSON.parse(messageDetails.image_ids).watermarked
         images = images.map(img => {return {type: 'photo', media: img}})
         // put the caption on the last one

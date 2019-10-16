@@ -1,15 +1,12 @@
 const {
     makeKeyboardTiles,
-    downloadPhotos,
+    downloadFile,
     watermarkDir,
     rmdirWithFiles,
     makeCollage
 } = require('../utils')
 const fs = require('fs')
 const path = require('path')
-
-let photosReceived = {
-}
 
 function post(ctx) {
     if (ctx.state.isAdmin) {
@@ -76,7 +73,7 @@ function handleTitleStage(ctx) {
     let username = ctx.from.username
     let title = ctx.message.text
     ctx.state.people.set(username, {draft_title: title, conversation: 'post.description'})
-    ctx.reply('Write the description')
+    ctx.reply('Write the description. You can make bulleted lists easily by beginning new lines with . (dot) and it will be replaced with a real bullet character. You can also change the character in /settings => "Description bullet".')
 }
 
 function handleDescriptionStage(ctx) {
@@ -91,28 +88,22 @@ function handlePriceStage(ctx) {
     let price = ctx.message.text
     ctx.state.people.set(username, {draft_price: price, conversation: 'post.photo'})
     ctx.reply('Send some photos and finally send the command /end when you\'re done.')
+    // clear the images dir for the new photos
+    let imagesDir = path.join(ctx.state.imagesDir, username, 'draft-images')
+    rmdirWithFiles(imagesDir)
 }
 
 async function handlePhotoStage(ctx) {
     let username = ctx.from.username
+    let imagesDir = path.join(ctx.state.imagesDir, username, 'draft-images')
     if (ctx.updateSubTypes.includes('photo')) {
         let photo = ctx.update.message.photo
         let fileProps = await ctx.telegram.getFile(photo[photo.length-1].file_id)
-        if (photosReceived[username]) {
-            photosReceived[username].push(fileProps)
-        } else {
-            photosReceived[username] = [fileProps]
-        }
+        let filePath = path.join(imagesDir, path.basename(fileProps.file_path))
+        let url = `https://api.telegram.org/file/bot${ctx.telegram.token}/${fileProps.file_path}`
+        await downloadFile(url, filePath)
+        ctx.reply('Received. Send more or /end it.')
     } else if (ctx.updateSubTypes.includes('text') && ctx.update.message.text === '/end') {
-        // get the accumulated file props
-        let filesToDown = photosReceived[username]
-        if (filesToDown === undefined) {
-            ctx.reply('You haven\'t sent any photos, send some and then /end')
-            return
-        }
-        // clear the object
-        photosReceived[username] = undefined
-        let imagesDir = path.join(ctx.state.imagesDir, username, 'draft-images')
         let channel = await ctx.state.people.get(username, 'draft_destination')
         let logoImg = path.join(ctx.state.imagesDir, username, 'logo-' + channel + '.png')
         try {
@@ -124,9 +115,8 @@ async function handlePhotoStage(ctx) {
             }
         }
         let draftCollage = path.join(ctx.state.imagesDir, username, 'draft-collage.jpg')
-        let images = await downloadPhotos(imagesDir, filesToDown, ctx.telegram.token)
         await makeCollage(imagesDir, draftCollage, logoImg)  // make a collage and watermark it
-        await watermarkDir(imagesDir, imagesDir, logoImg)  // watermark every image
+        let images = await watermarkDir(imagesDir, imagesDir, logoImg)  // watermark every image
         let removedAtPost = [  // messages removed when the draft is posted
             // intro to the watermarked images preview
             (await ctx.reply('The individual images will look like this...', {

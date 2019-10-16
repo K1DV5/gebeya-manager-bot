@@ -1,13 +1,13 @@
 /* DATA MODEL FOR THE BOT */
 
 /* escape from the encoding abomination hell */
-ALTER DATABASE my_gebeya CHARACTER SET = 'utf8mb4' COLLATE ='utf8mb4_unicode_ci';
+ALTER DATABASE k1dv5com_tg_gebeya CHARACTER SET = 'utf8mb4' COLLATE ='utf8mb4_unicode_ci';
 SET NAMES utf8mb4;
 
 DROP TABLE IF EXISTS posts, channels, people;
 
 /* admins of channels */
-CREATE TABLE people (username VARCHAR(255) PRIMARY KEY,
+CREATE TABLE people (username VARCHAR(128) PRIMARY KEY,
                      chat_id VARCHAR(255),
                      draft_title VARCHAR(255),
                      draft_description VARCHAR(3000),
@@ -20,23 +20,22 @@ CREATE TABLE people (username VARCHAR(255) PRIMARY KEY,
                      preview_post_message_id VARCHAR(255),
                      settings_channel VARCHAR(255),
                      conversation VARCHAR(255) /* where the person is in the conversation */
-);
+) ENGINE = INNODB;
 
 /* channels owned by admins, an admin can have more than one channel */
-CREATE TABLE channels (username VARCHAR(255) PRIMARY KEY,
-                       admin VARCHAR(255),
+CREATE TABLE channels (username VARCHAR(128) PRIMARY KEY,
+                       admin VARCHAR(128),
                        contact_text VARCHAR(255),
                        caption_template VARCHAR(1024) DEFAULT ':title\n\n:description\n\nPrice: :price',
                        sold_template VARCHAR(1024) DEFAULT '===( SOLD )===\n\n:caption\n\n===( SOLD )===',
                        license_expiry VARCHAR(255),
-                       description_bullets VARCHAR(12) DEFAULT 'none',
+                       description_bullet VARCHAR(12) DEFAULT ' • ',
                        FOREIGN KEY (admin) REFERENCES people(username)
-);
+) ENGINE = INNODB;
 
-/* posts by the bot,
- message_id is in the form 'channel/message_id' because message_id's are only unique inside chats */
-CREATE TABLE posts (message_id VARCHAR(255) PRIMARY KEY,
-                    channel VARCHAR(255),
+/* posts by the bot, */
+CREATE TABLE posts (channel VARCHAR(128),
+                    message_id VARCHAR(96),
                     title VARCHAR(255),
                     description VARCHAR(2440),
                     price VARCHAR(255),
@@ -47,8 +46,9 @@ CREATE TABLE posts (message_id VARCHAR(255) PRIMARY KEY,
                     sold_date VARCHAR(128),
                     marked_sold INT DEFAULT 0,
                     state VARCHAR(255) DEFAULT 'available',  /* or 'sold' */
+                    PRIMARY KEY (channel, message_id),
                     FOREIGN KEY (channel) REFERENCES channels(username)
-);
+) ENGINE = INNODB;
 
 /* trigger for setting the default value for the contact text of channels */
 DELIMITER //
@@ -63,10 +63,9 @@ CREATE TRIGGER sale_count BEFORE UPDATE ON posts FOR EACH ROW BEGIN
     END IF;
 END //
 DELIMITER ;
-insert into people (username) values('Ntsuhwork');
-insert into channels (username, admin, license_expiry) values('mygeb', 'Ntsuhwork', '1572382800');
-/* insert into people (username) values('K1DV5'); */
-/* insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1572382800'); */
-/* insert into posts (message_id, title) values (45, 'አውርድ'); */
-/* insert into posts (message_id, title) values (45, '🍒foo'); */
-/* select title from posts; */
+/* insert into people (username) values('Ntsuhwork'); */
+/* insert into channels (username, admin, license_expiry) values('mygeb', 'Ntsuhwork', '1572382800'); */
+insert into people (username) values('K1DV5');
+insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1572382800');
+/* insert into posts (channel, message_id, title) values ('mygeb', 45, 'foo'); */
+/* select * from posts where channel = 'mygeb' AND message_id = 45; */
