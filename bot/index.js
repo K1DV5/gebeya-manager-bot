@@ -1,4 +1,5 @@
 const mysql = require('mysql')
+var https = require('http');
 const os = require('os')
 const path = require('path')
 // const handlers = require('./handlers')
@@ -66,6 +67,8 @@ bot.use(async (ctx, next) => { // set necessary variables
     next()
 })
 
+bot.catch(err => {console.log(err.message)})
+
 bot.start(               start)
 bot.command('post',      post)
 bot.command('adminadd',  admin)
@@ -78,6 +81,16 @@ bot.on('photo',          post)
 bot.on('document',       doc)
 bot.on('callback_query', callback)
 
-bot.launch().then(() => console.log('listening...')).catch((err)=>{console.log(err.message)})
+bot.launch().then(() => console.log('bot listening...')).catch((err)=>{console.log(err.message)})
+
+// for web requests
+var server = https.createServer(function(req, res) {
+    res.writeHead(200, {'Content-Type': 'text/html'});
+    var message = 'This is a telegram bot. Go to <a href="https://t.me/GebeyaManagerBot">here</a> and talk to it.',
+        version = 'NodeJS ' + process.versions.node + '\n',
+        response = [message, version].join('<br><br>');
+    res.end(response);
+});
+server.listen(3000, () => console.log('server listening...'));
 
 // connection.end()
