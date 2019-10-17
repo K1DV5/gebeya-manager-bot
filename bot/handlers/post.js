@@ -146,13 +146,19 @@ async function handlePostDraft(ctx) {
         })
         // remove the preview messages
         await Promise.all(adminData.removedIds.map(async id => {
-            await ctx.telegram.deleteMessage(adminData.chat_id, id)
+            try {
+                await ctx.telegram.deleteMessage(adminData.chat_id, id)
+            } catch(err) {
+                console.log(err.message)
+            }
         }))
         let chatId = ctx.update.callback_query.from.id
         let messageId = ctx.update.callback_query.message.message_id
         try {
             await ctx.telegram.deleteMessage(chatId, messageId)
-        } catch {}
+        } catch(err) {
+            console.log(err.message)
+        }
         // reply notice
         let newLink = '<a href="https://t.me/' + newMessageIdDb + '">here</a>'
         let caption = '<i>Done, you can find your new post </i>' + newLink + '<i>, and it looks like this.</i>\n\n' + adminData.caption
