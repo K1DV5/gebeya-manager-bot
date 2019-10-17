@@ -17,7 +17,6 @@ CREATE TABLE people (username VARCHAR(128) PRIMARY KEY,
                      draft_destination VARCHAR(255), /* where the post will be (channel or channel/message_id) */
                      /* the replied images album and photo message ids, so that they can be removed when posting */
                      removed_message_ids VARCHAR(255),
-                     preview_post_message_id VARCHAR(255),
                      settings_channel VARCHAR(255),
                      conversation VARCHAR(255) /* where the person is in the conversation */
 ) ENGINE = INNODB;

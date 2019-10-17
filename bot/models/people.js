@@ -11,7 +11,6 @@ class people extends BaseModel {
                     'draft_destination',
                     'draft_image_ids',
                     'removed_message_ids',
-                    'preview_post_message_id',
                     'settings_channel',
                     'conversation',
                     ]
@@ -32,7 +31,6 @@ class people extends BaseModel {
                                 p.draft_description AS description,
                                 p.draft_price as price,
                                 p.draft_image_ids AS images,
-                                p.preview_post_message_id as previewId,
                                 p.removed_message_ids as removedIds,
                                 p.conversation as stage,
                                 c.caption_template AS template,
@@ -41,7 +39,11 @@ class people extends BaseModel {
                          INNER JOIN channels AS c
                             ON c.username = p.draft_destination
                          WHERE p.username = ?`
-            adminData = (await this.sql(query, [username]))[0]
+            let result = (await this.sql(query, [username]))[0]
+            let incomplete = [result.title, result.description, result.price].some(data => data === null)
+            if (!incomplete) {
+                adminData = result
+            }
         } else if (purpose === 'edit') { // for the edit caption functionality
             // get the channel's caption template
             let channel = (await this.sql('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination.split('/')[0]
@@ -54,9 +56,13 @@ class people extends BaseModel {
                                 removed_message_ids as removedIds,
                                 conversation AS stage
                          FROM people WHERE username = ?`
-            adminData = (await this.sql(query, [username]))[0]
-            adminData.template = channelData.caption_template
-            adminData.bullet = channelData.description_bullet
+            let result = (await this.sql(query, [username]))[0]
+            let incomplete = [result.title, result.description, result.price].some(data => data === null)
+            if (!incomplete) {
+                adminData = result
+                adminData.template = channelData.caption_template
+                adminData.bullet = channelData.description_bullet
+            }
         }
         if (adminData) {
             adminData.caption = adminData.template
@@ -76,7 +82,6 @@ class people extends BaseModel {
                                     draft_destination = NULL,
                                     draft_image_ids = NULL,
                                     removed_message_ids = NULL,
-                                    preview_post_message_id = NULL,
                                     conversation = NULL
              WHERE username = ?`, [username])
     }
@@ -88,10 +93,14 @@ class people extends BaseModel {
                      ON p.username = c.admin
                      WHERE p.username = ?`
         let channelsInfo = await this.sql(query, [username])
-        let channels = channelsInfo.filter(ch => ch.license_expiry*1 > licenseValidOn).map(ch => ch.username)
-        return channels
+        if (licenseValidOn) {
+            let channels = channelsInfo
+                .filter(ch => ch.license_expiry*1 > licenseValidOn*1)
+                .map(ch => ch.username)
+            return channels
+        }
+        return channelsInfo
     }
-
 }
 
 // p = new people()

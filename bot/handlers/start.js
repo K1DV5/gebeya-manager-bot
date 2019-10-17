@@ -1,20 +1,22 @@
 
 async function handleStart(ctx) {
     let {id: userId, username} = ctx.update.message.from
+    console.log(ctx)
     if (ctx.startPayload) {  // a button on a post was clicked
         let messageIdDb = ctx.startPayload.trim().replace('-', '/')
         let [channel, postId] = messageIdDb.split('/')
-        let message = (await ctx.state.sql('SELECT * FROM posts WHERE channel = ? AND message_id = ?', [channel, postId]))[0]
+        let message = await ctx.people.get({channel, message_id: postId})
+        console.log(message)
         if (message) {
             // send messages to both parties.
             let itemText = 'this item'
             let itemLink = `<a href="https://t.me/${messageIdDb}">${itemText}</a>`
-            let adminUsername = await ctx.state.posts.getAdmin(messageIdDb)
-            let adminChatId = await ctx.state.people.get(adminUsername, ['chat_id'])
+            let adminUsername = await ctx.posts.getAdmin(messageIdDb)
+            let adminChatId = await ctx.people.get(adminUsername, ['chat_id'])
 
             // to the customer
-            let postData = await ctx.state.posts.get(messageIdDb, ['caption', 'image_ids'])
-            let contactText = await ctx.state.channels.get(channel, 'contact_text')
+            let postData = await ctx.posts.get(messageIdDb, ['caption', 'image_ids'])
+            let contactText = await ctx.channels.get(channel, 'contact_text')
             let caption = '<i>You have selected</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n' + postData.caption + '\n\n' + contactText
             let collage = JSON.parse(postData.image_ids).collage
             ctx.replyWithPhoto(collage, {
@@ -52,17 +54,17 @@ async function handleStart(ctx) {
             ctx.reply('No message with that id was found.')
         }
     } else {
-        if (ctx.state.isAdmin) {
+        if (ctx.state.isChannelAdmin) {
             // store the chat id for the username
-            ctx.state.people.set(username, {chat_id: ctx.chat.id})
+            ctx.people.set(username, {chat_id: ctx.chat.id})
             ctx.reply('Welcome, now I can talk to you. Please send /post to post a new item.')
         } else {
             let reply = 'Welcome, please go to one of our channels '
-            let channels = await ctx.state.channels.getUsernames()
+            let channels = await ctx.channels.getUsernames()
             let chosen = []
+            // limit the number of shown channels to 5
+            let limit = 5
             if (channels.length > limit) {
-                let limit = 5
-                // limit the number of shown channels to 5
                 for (let i = 0; i < limit; i++) {
                     let selectedIndex = Math.round(Math.random()*channels.length)
                     chosen.push(channels[selectedIndex])

@@ -4,10 +4,6 @@ const os = require('os')
 const path = require('path')
 const Telegraf = require('telegraf')
 
-const post = require('./handlers/post')
-const help = require('./handlers/help')
-const settings = require('./handlers/settings')
-const start = require('./handlers/start')
 // the router
 const router = require('./middleware/router')
 
@@ -21,7 +17,7 @@ const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
 let connection
 let token
 if (os.hostname() === 'K1DV5') {
-    token = '959496597:AAEx1xGOKOnFY3gmk6LsUyrg3LaXhAFy7gE'
+    token = '959496597:AAEWFvI1oYv58RLrrckR_c1cW-4-tPZ1Pjw'
     connection = mysql.createConnection({
         host: 'localhost',
         user: 'k1dv5com_tg_bot',
@@ -55,11 +51,6 @@ bot.context.admins = SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES
 // bot.catch(err => {console.log(err.message)})
 
 // do actual work
-bot.start(start.handleStart)
-bot.command('post', post.handlePost)
-bot.command('help', help.handleHelp)
-bot.command('settings', settings.handleSettings)
-// everythong else will go to
 bot.use(router)
 
 bot.launch().then(() => console.log('bot listening...')).catch((err)=>{console.log(err.message)})

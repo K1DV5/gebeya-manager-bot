@@ -80,8 +80,6 @@ function watermarkProps(width, height, proportion = 0.3) {
 }
 
 // width and height arrangements
-// console.log(arrange(5, 500))
-// makeCollage('../images-staging/K1DV5/draft-images', '../images-staging/K1DV5/col.jpg', '../rnd/logo-196x.png')
 function arrange(total, width) {
     let cols = Math.floor(Math.sqrt(total))
     let left = total - cols**2
@@ -172,57 +170,8 @@ async function rmdirWithFiles(dir) {
     }
 }
 
-async function draftToPostable(username, queryFunc, type) {
-    let adminData
-    if (type === undefined) { // general
-        let query = `SELECT p.username,
-                            p.chat_id,
-                            p.draft_destination AS destination,
-                            p.draft_title AS title,
-                            p.draft_description AS description,
-                            p.draft_price as price,
-                            p.draft_image_ids AS images,
-                            p.preview_post_message_id as previewId,
-                            p.removed_message_ids as removedIds,
-                            p.conversation as stage,
-                            c.caption_template AS template,
-                            c.description_bullet as bullet
-                     FROM people AS p
-                     INNER JOIN channels AS c
-                        ON c.username = p.draft_destination
-                     WHERE p.username = ?`
-        adminData = (await queryFunc(query, [username]))[0]
-    } else if (type === 'edit') { // for the edit caption functionality
-        // get the channel's caption template
-        let channel = (await queryFunc('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination.split('/')[0]
-        let channelData = (await queryFunc('SELECT caption_template, description_bullet FROM channels WHERE username = ?', [channel]))[0]
-        let query = `SELECT draft_destination as destination,
-                            draft_title AS title,
-                            draft_description AS description,
-                            draft_price AS price,
-                            draft_image_ids AS images,
-                            removed_message_ids as removedIds,
-                            conversation AS stage
-                     FROM people WHERE username = ?`
-        adminData = (await queryFunc(query, [username]))[0]
-        adminData.template = channelData.caption_template
-        adminData.bullet = channelData.description_bullet
-    }
-    if (adminData) {
-        adminData.caption = adminData.template
-            .replace(/:title\b/, adminData.title)
-            .replace(/:description\b/, adminData.description.replace(/^\./gm, adminData.bullet))
-            .replace(/:price\b/, adminData.price)
-        adminData.images = adminData.images ? JSON.parse(adminData.images) : null
-        adminData.removedIds = adminData.removedIds ? JSON.parse(adminData.removedIds) : null
-        return adminData
-    }
-    console.log('Not found')
-}
-
 module.exports = {
     argparse,
-    draftToPostable,
     makeCollage,
     watermarkDir,
     downloadFile,

@@ -13,7 +13,7 @@ let helpDetails = {
 
 function handleHelp(ctx) {
     let text = ctx.update.message.text
-    if (ctx.state.isAdmin) {
+    if (ctx.state.isChannelAdmin) {
         if (text === '/help') {
             let helpText = helpItems.$intro + '\n'
             for (let [command, expln] of Object.entries(helpItems).filter(e => e[0][0] !== '$')) {
@@ -30,7 +30,7 @@ function handleHelp(ctx) {
             }
         }
     } else {
-        ctx.reply(ctx.state.fallbackReply)
+        ctx.reply(ctx.fallbackReply)
     }
 }
 

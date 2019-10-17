@@ -1,37 +1,39 @@
 const start = require('../handlers/start')
 const admin = require('../handlers/admin')
 const post = require('../handlers/post')
+const help = require('../handlers/help')
+const license = require('../handlers/license')
+const settings = require('../handlers/settings')
 
 // the callback data comes in like main_task:data and the keys are main_task
 const callbackHandlers = {
-    post,
-    discard: post
-    // 'details:': details, // buyer
-    // 'sold:': sold,
-    // 'repost:': repost,
-    // 'edit:': ctx => {ctx.state.stage = null; edit(ctx)},
-    // 'edit.after:': edit, // after some changs are made, save or discard
-    // 'delete:': del,
-    // 'settings:': settings,
+    post: post.handlePostDraft,
+    post_channel: post.handleChannelStage,
+    discard: post.handleDiscardDraft,
+    details: post.handleDetails, // buyer
+    sold: post.handleSoldToggle,
+    repost: post.handleRepost,
+    edit: post.handleEditCaption,
+    edit_after: post.handleEditSaveDiscard, // after some changs are made, save or discard
+    delete: post.handleDeletePost,
+    settings: settings.handleSettings,
 }
 
+const innerCommands = ['/end']
+
 async function router(ctx) {
-    // THIS FUNCTION HANDLES EVERYTHING OTHER THAN THE TASK BEGINNER COMMANDS.
-    // THEY SHOULD BE HANDLED DIRECTLY USING THE LIBRARY'S NATIVE METHODS BEFORE GETTING HERE
-
-
     let username = ctx.from.username
     // updateType: 'message',
     // updateSubTypes: [ 'text' ],
     let updateType = ctx.updateType
     let updateSubTypes = ctx.updateSubTypes
 
-    // admin dependent
+    // admin dependent --------------------------------------------------------
     let isAdmin = ctx.admins.includes(username)
     if (isAdmin) {
         if (updateType === 'message') {
             if (updateSubTypes.includes('text')) {
-                let command = ctx.update.message.text.split(' ', 1)[0]
+                let command = ctx.message.text.split(' ', 1)[0]
                 if (command === '/adminadd') {
                     admin.handleAdminAdd(ctx)
                     return
@@ -41,9 +43,9 @@ async function router(ctx) {
     }
     // not else because the admin can be a channel admin as well
 
-    let isChannelAdmin = ctx.people.exists(username)
-    if (isChannelAdmin) {
-        // conversation independent
+    ctx.state.isChannelAdmin = ctx.people.exists(username)
+    if (ctx.state.isChannelAdmin) {
+        // conversation independent ----------------------------------------------
         if (updateType === 'callback_query') {
             let callbackData = ctx.update.callback_query.data
             for (let [prefix, handler] of Object.entries(callbackHandlers)) {
@@ -55,24 +57,39 @@ async function router(ctx) {
                 }
             }
             ctx.answerCbQuery('Done')
+        } else if (updateSubTypes.includes('text')) { // commands that work anywhere
+            let text = ctx.message.text
+            if (text[0] === '/') { // command
+                let command = text.split(' ', 1)[0]
+                if (command === '/start') {
+                    start.handleStart(ctx)
+                    return
+                } else if (command === '/post') {
+                    post.handlePost(ctx)
+                    return
+                } else if (command === '/settings') {
+                    settings.handleSettings(ctx)
+                    return
+                } else if (command === '/help') {
+                    help.handleHelp(ctx)
+                    return
+                } else if (command === '/license') {
+                    license.handleLicense(ctx)
+                    return
+                } else if (!innerCommands.includes(command)) {
+                    ctx.reply('The command ' + command + ' is not supported. Look at the /help.')
+                    return
+                }
+            }
         }
 
+        // conversation dependent ------------------------------------------------
         let convo = await ctx.people.getConvo(username)
         if (convo === null) { // idle
-            if (updateType === 'message') {
-                if (updateType === 'text') {
-                    let text = ctx.update.message.text
-                    if (text[0] === '/') { // command
-                        let command = text.split(' ', 1)[0]
-                        // let additionalText = text.slice(command.length + 1).trim()
-                        ctx.reply('The command ' + command + ' is not supported. Look at the /help.')
-                    } else {
-                        if (/hi|hello/.test(text.toLowerCase())) {
-                            ctx.reply('Hi, maybe you need /help')
-                        } else {
-                            ctx.reply(ctx.fallbackReply)
-                        }
-                    }
+            if (updateSubTypes.includes('text')) {
+                let text = ctx.message.text
+                if (/hi|hello/.test(text.toLowerCase())) {
+                    ctx.reply('Hi, maybe you need /help')
                 } else {
                     ctx.reply(ctx.fallbackReply)
                 }
@@ -80,20 +97,101 @@ async function router(ctx) {
                 ctx.reply(ctx.fallbackReply)
             }
             return
-        } else if (convo === 'post.channel') {
         } else if (convo === 'post.title') {
+            if (updateSubTypes.includes('text')) {
+                post.handleTitleStage(ctx)
+                return
+            } else {
+                ctx.reply('Please send a text for the title, or maybe you need /help.')
+            }
         } else if (convo === 'post.description') {
+            if (updateSubTypes.includes('text')) {
+                post.handleDescriptionStage(ctx)
+                return
+            } else {
+                ctx.reply('Please send a text for the description, or maybe you need /help.')
+            }
         } else if (convo === 'post.price') {
+            if (updateSubTypes.includes('text')) {
+                post.handlePriceStage(ctx)
+                return
+            } else {
+                ctx.reply('Please send a text for the price, or maybe you need /help.')
+            }
         } else if (convo === 'post.photo') {
-        } else if (convo === 'post.ready') {
+            if (updateSubTypes.includes('photo')) {
+                post.handlePhotoStagePhotos(ctx)
+                return
+            } else if (updateSubTypes.includes('text') && ctx.message.text === '/end') {
+                post.handlePhotoStageEnd(ctx)
+            } else {
+                ctx.reply('Please send some photos for the post and finally send /end, or maybe look at the /help.')
+            }
+        } else if (convo === 'edit.title') {
+            if (updateSubTypes.includes('text')) {
+                post.handleEditTitle(ctx)
+                return
+            } else {
+                ctx.reply('Please send a text for the title, or maybe you need /help.')
+            }
+        } else if (convo === 'edit.description') {
+            if (updateSubTypes.includes('text')) {
+                post.handleEditDescription(ctx)
+                return
+            } else {
+                ctx.reply('Please send a text for the description, or maybe you need /help.')
+            }
+        } else if (convo === 'edit.price') {
+            if (updateSubTypes.includes('text')) {
+                post.handleEditPrice(ctx)
+                return
+            } else {
+                ctx.reply('Please send a text for the price, or maybe you need /help.')
+            }
         } else if (convo === 'settings.logo.document') {
+            settings.handleSettingLogoDoc(ctx)
+            return
         } else if (convo === 'settings.caption_template.text') {
+            if (updateSubTypes.includes('text')) {
+                settings.handleSettingTextCaptionTempl(ctx)
+            } else {
+                ctx.reply('Please send a text for the caption template, or maybe you need /help.')
+            }
+            return
         } else if (convo === 'settings.sold_template.text') {
+            if (updateSubTypes.includes('text')) {
+                settings.handleSettingTextSoldTempl(ctx)
+            } else {
+                ctx.reply('Please send a text for the sold template, or maybe you need /help.')
+            }
+            return
         } else if (convo === 'settings.contact_text.text') {
+            if (updateSubTypes.includes('text')) {
+                settings.handleSettingTextContactText(ctx)
+            } else {
+                ctx.reply('Please send a text for the contact text, or maybe you need /help.')
+            }
+            return
         } else if (convo === 'settings.description_bullet.text') {
-        } else if (convo === null) {
+            if (updateSubTypes.includes('text')) {
+                settings.handleSettingTextDescBullet(ctx)
+            } else {
+                ctx.reply('Please send a text for the description bullet, or maybe you need /help.')
+            }
+            return
+        } else {
         }
     } else {
+        if (updateSubTypes.includes('text')) {
+            let text = ctx.message.text
+            if (/hi|hello/.test(text.toLowerCase())) {
+                ctx.reply('Hi, maybe you need /help')
+            } else {
+                ctx.reply(ctx.fallbackReply)
+            }
+        } else {
+            ctx.reply(ctx.fallbackReply)
+        }
     }
 }
 

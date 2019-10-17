@@ -14,6 +14,14 @@ class channels extends BaseModel {
         super(dbConn, table, cols)
     }
 
+    async licenseIsValid(username, asOf) {
+        let expiry = await this.get(username, 'license_expiry')
+        if (expiry * 1 > asOf * 1) {
+            return true
+        }
+        return false
+    }
+
     async getUsernames() {
         return (await this.sql('SELECT username FROM ' + this.table)).map(ch => ch.username)
     }

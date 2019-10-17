@@ -19,8 +19,27 @@ class BaseModel {
         })
     }
 
+    prepareWhere(index) {
+        // index: string, object
+        let values
+        let where = ' WHERE '
+        if (typeof index === 'string') {
+            values = [index]
+            where += this.cols[0] + '=?'
+        } else { // an object passed
+            values = []
+            for (let [key, val] of Object.entries(index).filter(pair => this.cols.includes(pair[0]))) {
+                where += key + '=?,'
+                values.push(val)
+            }
+            where = where.slice(0, where.length-1) // remove last comma
+        }
+        return {where, values}
+    }
+
     async exists(index) {
-        if ((await this.sql('SELECT 1 FROM ' + this.table + ' WHERE ' + this.cols[0] + ' = ?', [index]))[0]) {
+        let {where, values} = this.prepareWhere(index)
+        if ((await this.sql('SELECT 1 FROM ' + this.table + where, values))[0]) {
             return true
         }
         return false
@@ -58,18 +77,22 @@ class BaseModel {
     }
 
     async get(index, cols) {
-        if (cols === undefined) {
-            return (await this.sql('SELECT * FROM ' + this.table + ' WHERE ' + this.cols[0] + ' = ?', [index]))[0]
-        }
+        // index: string, object
+        // cols: string, array, undefined
+        let {where, values} = this.prepareWhere(index)
         if (typeof cols === 'string') {
             if (this.cols.includes(cols)) {
-                let query = 'SELECT ' + cols + ' FROM ' + this.table + ' WHERE ' + this.cols[0] + ' = ?'
-                return (await this.sql(query, [index]))[0][cols]
+                let query = 'SELECT ' + cols + ' FROM ' + this.table + where
+                return (await this.sql(query, values))[0][cols]
             }
         }
         let available = cols.filter(col => this.cols.includes(col))
-        let query = 'SELECT ' + available.join(',') + ' FROM ' + this.table + ' WHERE ' + this.cols[0] + ' = ?'
-        return (await this.sql(query, [index]))[0]
+        let query = 'SELECT ' + available.join(',') + ' FROM ' + this.table + where
+        let result = await this.sql(query, values)
+        if (result.length === 1) {
+            return result[0]
+        }
+        return result
     }
 
     set(index, params) {
@@ -79,8 +102,9 @@ class BaseModel {
             query += key + '=?,'
             values.push(val)
         }
-        query = query.slice(0, query.length-1) + ' WHERE ' + this.cols[0] + ' = ?'
-        this.sql(query, [...values, index])
+        let {where, values: whereValues} = this.prepareWhere(index)
+        query = query.slice(0, query.length-1) + where
+        this.sql(query, [...values, ...whereValues])
     }
 
 }
