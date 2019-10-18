@@ -8,7 +8,7 @@ class people extends BaseModel {
                     'draft_title',
                     'draft_description',
                     'draft_price',
-                    'draft_destination',
+                    'to_update',
                     'draft_image_ids',
                     'removed_message_ids',
                     'settings_channel',
@@ -26,7 +26,7 @@ class people extends BaseModel {
         if (purpose === undefined) { // general
             let query = `SELECT p.username,
                                 p.chat_id,
-                                p.draft_destination AS destination,
+                                p.to_update AS destination,
                                 p.draft_title AS title,
                                 p.draft_description AS description,
                                 p.draft_price as price,
@@ -37,7 +37,7 @@ class people extends BaseModel {
                                 c.description_bullet as bullet
                          FROM people AS p
                          INNER JOIN channels AS c
-                            ON c.username = p.draft_destination
+                            ON c.username = p.to_update
                          WHERE p.username = ?`
             let result = (await this.sql(query, [username]))[0]
             let incomplete = [result.title, result.description, result.price].some(data => data === null)
@@ -46,9 +46,9 @@ class people extends BaseModel {
             }
         } else if (purpose === 'edit') { // for the edit caption functionality
             // get the channel's caption template
-            let channel = (await this.sql('SELECT draft_destination FROM people WHERE username = ?', [username]))[0].draft_destination.split('/')[0]
+            let channel = (await this.sql('SELECT to_update FROM people WHERE username = ?', [username]))[0].to_update.split('/')[0]
             let channelData = (await this.sql('SELECT caption_template, description_bullet FROM channels WHERE username = ?', [channel]))[0]
-            let query = `SELECT draft_destination as destination,
+            let query = `SELECT to_update as destination,
                                 draft_title AS title,
                                 draft_description AS description,
                                 draft_price AS price,
@@ -79,7 +79,7 @@ class people extends BaseModel {
     clearDraft(username) {
         this.sql(`UPDATE people SET draft_title = NULL,
                                     draft_description = NULL,
-                                    draft_destination = NULL,
+                                    to_update = NULL,
                                     draft_image_ids = NULL,
                                     removed_message_ids = NULL,
                                     conversation = NULL

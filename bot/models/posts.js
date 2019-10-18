@@ -23,13 +23,13 @@ class posts extends BaseModel {
         this.sql('UPDATE posts SET state = "deleted" WHERE message_id = ?', [messageId])
     }
 
-    async getAdmin(messageId) {
+    async getAdmin(channel, messageId) {
         return (await this.sql(`SELECT a.username FROM posts AS p
                                     INNER JOIN channels AS c
                                         ON p.channel = c.username
                                     INNER JOIN people AS a
                                         ON c.admin = a.username
-                                    WHERE message_id = ?`, [messageId]))[0]
+                                    WHERE channel = ? AND message_id = ?`, [channel, messageId]))[0].username
     }
 
     async getUsernames() {

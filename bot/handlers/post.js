@@ -17,7 +17,7 @@ async function handlePost(ctx) {
         return
     }
     if (channels.length === 1) {
-        ctx.people.set(username, {draft_destination: channels[0], conversation: 'post.title'})
+        ctx.people.set(username, {to_update: channels[0], conversation: 'post.title'})
         ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
     } else {
         let keyboard = makeKeyboardTiles(channels.map(ch => {return {text: '@' + channel, callback_data: 'post_channel:' + ch}}))
@@ -32,7 +32,7 @@ async function handlePost(ctx) {
 async function handleChannelStage(ctx) {
     let username = ctx.from.username
     let channel = ctx.update.callback_query.data.split(':')[1]
-    ctx.people.set(username, {draft_destination: channel, conversation: 'post.title'})
+    ctx.people.set(username, {to_update: channel, conversation: 'post.title'})
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.message.message_id
     let text = 'You will be posting to @' + channel + '.What is the title of the post?'
@@ -76,7 +76,7 @@ async function handlePhotoStagePhotos(ctx) {
 
 async function handlePhotoStageEnd(ctx) {
     let username = ctx.from.username
-    let channel = await ctx.people.get(username, 'draft_destination')
+    let channel = await ctx.people.get(username, 'to_update')
     let logoImg = path.join(ctx.imagesDir, username, 'logo-' + channel + '.png')
     try {
         await fs.promises.stat(logoImg) // check if it exists
@@ -137,12 +137,11 @@ async function handlePostDraft(ctx) {
     if (adminData) {
         let channel = adminData.destination
         let message = await ctx.telegram.sendPhoto('@' + channel, adminData.images.collage, {caption: adminData.caption})
+        let postId = message.message_id
         let newMessageIdDb = channel + '/' + message.message_id
-        let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + newMessageIdDb.replace('/', '-')
-        ctx.telegram.editMessageReplyMarkup('@' + channel, message.message_id, undefined, {
-            inline_keyboard: [
-                [{text: 'Buy', url: startUrl}]
-            ]
+        let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + channel + '-' + postId
+        ctx.telegram.editMessageReplyMarkup('@' + channel, postId, undefined, {
+            inline_keyboard: [[{text: 'Buy', url: startUrl}]]
         })
         // remove the preview messages
         await Promise.all(adminData.removedIds.map(async id => {
@@ -172,8 +171,9 @@ async function handlePostDraft(ctx) {
         }
         )
         // record the post
-        ctx.posts.insert(newMessageIdDb, {
+        ctx.posts.insert({
             channel,
+            message_id: postId,
             title: adminData.title,
             description: adminData.description,
             price: adminData.price,
@@ -189,7 +189,8 @@ async function handlePostDraft(ctx) {
 }
 
 async function handleDiscardDraft(ctx) {
-    let adminData = await ctx.people.getDraft(ctx.from.username)
+    let username = ctx.from.username
+    let adminData = await ctx.people.getDraft(username)
     if (adminData) {
         // remove the preview messages
         await Promise.all(adminData.removedIds.map(async id => {
@@ -204,31 +205,6 @@ async function handleDiscardDraft(ctx) {
     // clean up the person draft
     ctx.people.clearDraft(username)
     ctx.reply('Draft discarded.')
-}
-
-async function handleDeletePost(ctx) {
-    let input = ctx.update.callback_query
-    let postAddress = input.data
-    let [channel, postId] = postAddress.split('/')
-    let chatId = ctx.update.callback_query.from.id
-    let messageId = ctx.update.callback_query.message.message_id
-    let postExists = await ctx.posts.exists({channel, message_id: postId})
-    if (postExists) {
-        try {
-            ctx.telegram.deleteMessage('@' + channel, postId)
-            let text = 'Post deleted.'
-            ctx.telegram.editMessageCaption(chatId, messageId, undefined, text)
-        } catch {
-            ctx.state.forceSold = true // force make it sold
-            handleSoldToggle(ctx)
-            let text = "can't delete message, marked sold. You can delete it manually."
-            ctx.telegram.editMessageCaption(chatId, messageId, undefined, text)
-        }
-        ctx.posts.set({channel, message_id: postId}, {state: 'deleted'})
-    } else {
-        let text = '[deleted] Post not found, may have been alreary deleted'
-        ctx.telegram.editMessageCaption(chatId, messageId, undefined, text)
-    }
 }
 
 async function handleDetails(ctx) {  // details callback
@@ -261,8 +237,8 @@ async function handleDetails(ctx) {  // details callback
         })
     } else if (messageDetails.state === 'sold') {
         ctx.reply('Sorry, item already sold.')
-    } else if (messageDetails.status === 'deleted') {
-        ctx.reply('Details not found')
+    } else if (messageDetails.state === 'deleted') {
+        ctx.reply('Sorry, item removed.')
     } else {
         ctx.reply(ctx.fallbackReply)
     }
@@ -273,7 +249,8 @@ async function handleEditTitle(ctx) {
     let text = ctx.update.message.text
     let postTitle
     if (text === 'skip') {
-        let [channel, message_id] = await ctx.people.get(username, 'draft_destination').split('/')
+        let destination = await ctx.people.get(username, 'to_update')
+        let [channel, message_id] = destination.split('/')
         postTitle = await ctx.posts.get({channel, message_id}, 'title')
     } else {
         postTitle = text
@@ -287,12 +264,13 @@ async function handleEditDescription(ctx) {
     let text = ctx.update.message.text
     let postDescription
     if (text === 'skip') {
-        let [channel, message_id] = await ctx.people.get(username, 'draft_destination').split('/')
+        let destination = await ctx.people.get(username, 'to_update')
+        let [channel, message_id] = destination.split('/')
         postDescription = await ctx.posts.get({channel, message_id}, 'description')
     } else {
         postDescription = text
     }
-    ctx.people.set(username, {draft_title: postDescription, conversation: 'edit.price'})
+    ctx.people.set(username, {draft_description: postDescription, conversation: 'edit.price'})
     ctx.reply('Send the new price. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
 }
 
@@ -301,12 +279,13 @@ async function handleEditPrice(ctx) {
     let text = ctx.update.message.text
     let postPrice
     if (text === 'skip') {
-        let [channel, message_id] = await ctx.people.get(username, 'draft_destination').split('/')
+        let destination = await ctx.people.get(username, 'to_update')
+        let [channel, message_id] = destination.split('/')
         postPrice = await ctx.posts.get({channel, message_id}, 'price')
     } else {
         postPrice = text
     }
-    ctx.people.set(username, {draft_title: postPrice, conversation: 'edit.ready'})
+    ctx.people.set(username, {draft_price: postPrice, conversation: 'edit.ready'})
     let adminData = await ctx.people.getDraft(username, 'edit')
     let collage = adminData.images.collage
     let caption = '<i>The new caption will look like this...</i>\n\n' + adminData.caption
@@ -344,6 +323,7 @@ async function handleEditSaveDiscard(ctx) {
         let deletedMessage = adminData.removedIds.editOrigin
         ctx.telegram.deleteMessage(chatId, deletedMessage)
         // edit the post
+        let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
         ctx.telegram.editMessageCaption('@' + channel, postId, undefined, adminData.caption, {
             reply_markup: {
                 inline_keyboard: [[{text: 'Buy', url: startUrl}]]
@@ -381,10 +361,10 @@ async function handleEditCaption(ctx) {
     let postExists = await ctx.posts.exists({channel, message_id: postId})
     if (postExists) {
         let messageId = ctx.update.callback_query.message.message_id
-        let images = await ctx.posts.get({channel, message_id: messageId}, 'image_ids')
+        let images = await ctx.posts.get({channel, message_id: postId}, 'image_ids')
         ctx.people.set(username, {
             conversation: 'edit.title',
-            draft_destination: messageIdDb,
+            to_update: messageIdDb,
             removed_message_ids: JSON.stringify({editOrigin: messageId}),
             draft_image_ids: images
         })
@@ -396,11 +376,53 @@ async function handleEditCaption(ctx) {
     }
 }
 
+async function handleSold(ctx) {
+    let messageIdDb = ctx.update.callback_query.data
+    let [channel, messageId] = messageIdDb.split('/')
+    let post = await ctx.posts.get({channel, message_id: messageId},
+        ['caption', 'image_ids', 'state', 'sold_template'])
+    let captionEntities = ctx.update.callback_query.message.caption_entities
+    if (post.state === 'available' || ctx.state.forceSold) {
+        let soldTemplate = await ctx.channels.get(channel, 'sold_template')
+        let soldText = soldTemplate.replace(/:caption\b/, post.caption)
+        try { // for when trying to edit with same content
+            ctx.telegram.editMessageCaption('@' + channel, messageId, undefined, soldText)
+        } catch {}
+        if (ctx.state.forceSold === undefined) {
+            // change the state
+            ctx.posts.set({channel, message_id: messageId}, {
+                state: 'sold',
+                sold_date: ctx.update.callback_query.message.date,
+            })
+            // replace the button with undo
+            let userId = captionEntities.filter(e => e.type == 'text_mention')[0].user.id
+            let itemLink = '<a href="' + captionEntities.filter(e => e.type == 'text_link')[0].url + '">this item</a>'
+            let customerLink = `<a href="tg://user?id=${userId}">customer</a>`
+            let text = `<i>You have a</i> ${customerLink} <i>who wants to buy</i> ${itemLink} <i>from</i> @${channel}. <i>They may contact you</i>.\n\n` + post.caption
+            let chatId = ctx.update.callback_query.from.id
+            let adminMessageId = ctx.update.callback_query.message.message_id
+            ctx.telegram.editMessageCaption(chatId, adminMessageId, undefined, text, {
+                parse_mode: 'html',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {text: 'Repost', callback_data: 'repost:' + messageIdDb},
+                            {text: 'Delete', callback_data: 'delete:' + messageIdDb}
+                        ]
+                    ]
+                }
+            })
+        }
+    } else {
+        ctx.reply('Already marked sold.')
+    }
+}
+
 async function handleRepost(ctx) {
     let input = ctx.update.callback_query
     let [channel, postId] = input.data.split('/')
     let postData = await ctx.posts.get({channel, message_id: postId},
-        ['title, description', 'price', 'image_ids', 'state'])
+        ['title', 'description', 'price', 'caption', 'image_ids'])
     if (!postData) {
         ctx.reply('Sorry, not found')
         return
@@ -410,14 +432,13 @@ async function handleRepost(ctx) {
         ctx.reply('Your license for this channel has expired. Contact @' + ctx.admins + ' for renewal.')
         return
     }
-    let soldTemplate = await ctx.channels.get(channel, ['sold_template'])
-    if (postData.state === 'available') {
-        // mark as sold
-        let soldText = soldTemplate.replace(/:caption\b/, postData.caption)
-        ctx.telegram.editMessageCaption('@' + channel, postId, undefined, soldText)
-        // also in db
-        ctx.posts.set({channel, message_id: postId}, {state: 'sold'})
+    try { // remove the current one
+        ctx.telegram.deleteMessage('@' + channel, postId)
+    } catch(err) {
+        console.log(err.message)
     }
+    // also in db
+    ctx.posts.set({channel, message_id: postId}, {state: 'deleted'})
     let collageId = JSON.parse(postData.image_ids).collage
     let message = await ctx.telegram.sendPhoto('@' + channel, collageId, {caption: postData.caption})
     let newMessageIdDb = channel + '/' + message.message_id
@@ -450,75 +471,28 @@ async function handleRepost(ctx) {
         })
 }
 
-async function handleSoldToggle(ctx) {
-    let messageIdDb = ctx.update.callback_query.data
-    let [channel, messageId] = messageIdDb.split('/')
-    let post = await ctx.posts.get({channel, message_id: messageId},
-        ['caption', 'image_ids', 'state', 'sold_template'])
-    let captionEntities = ctx.update.callback_query.message.caption_entities
-    if (post.state === 'available' || ctx.state.forceSold) {
-        let soldText = post.sold_template.replace(/:caption\b/, post.caption)
-        try { // for when trying to edit with same content
-            ctx.telegram.editMessageCaption('@' + channel, messageId, undefined, soldText)
-        } catch {}
-        if (ctx.state.forceSold === undefined) {
-            // change the state
-            ctx.posts.set({channel, message_id: messageId}, {
-                state: 'sold',
-                sold_date: ctx.update.callback_query.message.date,
-            })
-            // replace the button with undo
-            let userId = captionEntities.filter(e => e.type == 'text_mention')[0].user.id
-            let itemLink = '<a href="' + captionEntities.filter(e => e.type == 'text_link')[0].url + '">this item</a>'
-            let customerLink = `<a href="tg://user?id=${userId}">customer</a>`
-            let text = `<i>You have a</i> ${customerLink} <i>who wants to buy</i> ${itemLink} <i>from</i> @${post.channel}. <i>They may contact you</i>.\n\n` + post.caption
-            let chatId = ctx.update.callback_query.from.id
-            let adminMessageId = ctx.update.callback_query.message.message_id
-            ctx.telegram.editMessageCaption(chatId, adminMessageId, undefined, text, {
-                parse_mode: 'html',
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            {text: 'Undo sold', callback_data: 'sold:' + messageIdDb},
-                            {text: 'Repost', callback_data: 'repost:' + messageIdDb},
-                            {text: 'Delete', callback_data: 'delete:' + messageIdDb}
-                        ]
-                    ]
-                }
-            })
+async function handleDeletePost(ctx) {
+    let input = ctx.update.callback_query
+    let postAddress = input.data
+    let [channel, postId] = postAddress.split('/')
+    let chatId = ctx.update.callback_query.from.id
+    let messageId = ctx.update.callback_query.message.message_id
+    let postExists = await ctx.posts.exists({channel, message_id: postId})
+    if (postExists) {
+        try {
+            ctx.telegram.deleteMessage('@' + channel, postId)
+            let text = 'Post deleted.'
+            ctx.telegram.editMessageCaption(chatId, messageId, undefined, text)
+        } catch {
+            ctx.state.forceSold = true // force make it sold
+            handleSoldToggle(ctx)
+            let text = "can't delete message, marked sold. You can delete it manually."
+            ctx.telegram.editMessageCaption(chatId, messageId, undefined, text)
         }
+        ctx.posts.set({channel, message_id: postId}, {state: 'deleted'})
     } else {
-        let licenseValid = await ctx.channels.licenseIsValid(channel, input.message.date)
-        if (!licenseValid) {
-            ctx.reply('Your license for this channel has expired. Contact @' + ctx.admins[0] + ' for renewal.')
-            return
-        }
-        let caption = post.caption
-        let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + messageIdDb.replace('/', '-')
-        ctx.telegram.editMessageCaption('@' + channel, messageId, undefined, caption, {
-            inline_keyboard: [[{text: 'Buy', url: startUrl}]]
-        })
-        // change the state
-        ctx.posts.set({channel, message_id: messageId}, {state: 'available'})
-        // replace the button with undo
-        let userId = captionEntities.filter(e => e.type == 'text_mention')[0].user.id
-        let itemLink = '<a href="' + captionEntities.filter(e => e.type == 'text_link')[0].url + '">this item</a>'
-        let customerLink = `<a href="tg://user?id=${userId}">customer</a>`
-        let text = `<i>You have a</i> ${customerLink} <i>who wants to buy</i> ${itemLink} <i>from</i> @${post.channel}. <i>They may contact you</i>.\n\n` + post.caption
-        let chatId = ctx.update.callback_query.from.id
-        let adminMessageId = ctx.update.callback_query.message.message_id
-        ctx.telegram.editMessageCaption(chatId, adminMessageId, undefined, text, {
-            parse_mode: 'html',
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        {text: 'Mark as sold', callback_data: 'sold:' + messageIdDb},
-                        {text: 'Repost', callback_data: 'repost:' + messageIdDb},
-                        {text: 'Delete', callback_data: 'delete:' + messageIdDb}
-                    ]
-                ]
-            }
-        })
+        let text = '[deleted] Post not found, may have been alreary deleted'
+        ctx.telegram.editMessageCaption(chatId, messageId, undefined, text)
     }
 }
 
@@ -533,7 +507,7 @@ module.exports = {
     handlePostDraft,
     handleDiscardDraft,
     handleDetails,
-    handleSoldToggle,
+    handleSold,
     handleRepost,
     handleEditCaption,
     handleEditTitle,
@@ -542,3 +516,4 @@ module.exports = {
     handleEditSaveDiscard,
     handleDeletePost
 }
+

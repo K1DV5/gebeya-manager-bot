@@ -10,6 +10,7 @@ class channels extends BaseModel {
             'caption_template',
             'sold_template',
             'license_expiry',
+            'description_bullet'
         ]
         super(dbConn, table, cols)
     }

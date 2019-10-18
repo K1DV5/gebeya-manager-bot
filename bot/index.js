@@ -1,3 +1,5 @@
+
+// -{node --inspect %f}
 const mysql = require('mysql')
 var https = require('http');
 const os = require('os')

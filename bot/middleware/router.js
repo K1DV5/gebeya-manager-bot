@@ -7,16 +7,16 @@ const settings = require('../handlers/settings')
 
 // the callback data comes in like main_task:data and the keys are main_task
 const callbackHandlers = {
-    post: post.handlePostDraft,
-    post_channel: post.handleChannelStage,
-    discard: post.handleDiscardDraft,
-    details: post.handleDetails, // buyer
-    sold: post.handleSoldToggle,
-    repost: post.handleRepost,
-    edit: post.handleEditCaption,
-    edit_after: post.handleEditSaveDiscard, // after some changs are made, save or discard
-    delete: post.handleDeletePost,
-    settings: settings.handleSettings,
+    'post:': post.handlePostDraft,
+    'post_channel:': post.handleChannelStage,
+    'discard:': post.handleDiscardDraft,
+    'details:': post.handleDetails, // buyer
+    'sold:': post.handleSold,
+    'repost:': post.handleRepost,
+    'edit:': post.handleEditCaption,
+    'edit_after:': post.handleEditSaveDiscard, // after some changs are made, save or discard
+    'delete:': post.handleDeletePost,
+    'settings:': settings.handleSettingIntro,
 }
 
 const innerCommands = ['/end']
@@ -51,18 +51,23 @@ async function router(ctx) {
             for (let [prefix, handler] of Object.entries(callbackHandlers)) {
                 if (callbackData.slice(0, prefix.length) === prefix) {
                     // // remove the prefix, and the colon
-                    // ctx.update.callback_query.data = callbackData.slice(prefix.length + 1)
+                    ctx.update.callback_query.data = callbackData.slice(prefix.length)
                     handler(ctx)
+                    ctx.answerCbQuery('Done')
                     return
                 }
             }
-            ctx.answerCbQuery('Done')
         } else if (updateSubTypes.includes('text')) { // commands that work anywhere
             let text = ctx.message.text
             if (text[0] === '/') { // command
                 let command = text.split(' ', 1)[0]
+                ctx.state.payload = text.slice(text.indexOf(' ') + 1)
                 if (command === '/start') {
-                    start.handleStart(ctx)
+                    if (text.split(' ').length > 1) {
+                        start.handleStart(ctx)
+                    } else {
+                        start.handleWelcomeStart(ctx)
+                    }
                     return
                 } else if (command === '/post') {
                     post.handlePost(ctx)
@@ -149,7 +154,11 @@ async function router(ctx) {
                 ctx.reply('Please send a text for the price, or maybe you need /help.')
             }
         } else if (convo === 'settings.logo.document') {
-            settings.handleSettingLogoDoc(ctx)
+            if (updateSubTypes.includes('document')) {
+                settings.handleSettingLogoDoc(ctx)
+            } else {
+                ctx.reply('Please send an image FILE for the logo')
+            }
             return
         } else if (convo === 'settings.caption_template.text') {
             if (updateSubTypes.includes('text')) {

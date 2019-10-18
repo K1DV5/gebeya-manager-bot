@@ -14,10 +14,9 @@ CREATE TABLE people (username VARCHAR(128) PRIMARY KEY,
                      draft_price VARCHAR(255) DEFAULT '[Not given]',
                      /* json encoded object of image ids {"collage": *, "watermarked": [*]} */
                      draft_image_ids VARCHAR(3000),
-                     draft_destination VARCHAR(255), /* where the post will be (channel or channel/message_id) */
+                     to_update VARCHAR(255), /* thing they are manipulating (post, channel) */
                      /* the replied images album and photo message ids, so that they can be removed when posting */
                      removed_message_ids VARCHAR(255),
-                     settings_channel VARCHAR(255),
                      conversation VARCHAR(255) /* where the person is in the conversation */
 ) ENGINE = INNODB;
 
@@ -28,7 +27,7 @@ CREATE TABLE channels (username VARCHAR(128) PRIMARY KEY,
                        caption_template VARCHAR(1024) DEFAULT ':title\n\n:description\n\nPrice: :price',
                        sold_template VARCHAR(1024) DEFAULT '===( SOLD )===\n\n:caption\n\n===( SOLD )===',
                        license_expiry VARCHAR(255),
-                       description_bullet VARCHAR(12) DEFAULT ' • ',
+                       description_bullet VARCHAR(12) DEFAULT '•',
                        FOREIGN KEY (admin) REFERENCES people(username)
 ) ENGINE = INNODB;
 
@@ -43,8 +42,7 @@ CREATE TABLE posts (channel VARCHAR(128),
                     image_ids VARCHAR(3000),
                     post_date VARCHAR(128),
                     sold_date VARCHAR(128),
-                    marked_sold INT DEFAULT 0,
-                    state VARCHAR(255) DEFAULT 'available',  /* or 'sold' */
+                    state VARCHAR(255) DEFAULT 'available',  /* or 'sold' or 'deleted' */
                     PRIMARY KEY (channel, message_id),
                     FOREIGN KEY (channel) REFERENCES channels(username)
 ) ENGINE = INNODB;
@@ -56,15 +54,10 @@ CREATE TRIGGER default_contact_text BEFORE INSERT ON channels FOR EACH ROW BEGIN
         SET NEW.contact_text = CONCAT("To buy this item, contact @", NEW.admin, '.');
     END IF;
 END //
-CREATE TRIGGER sale_count BEFORE UPDATE ON posts FOR EACH ROW BEGIN
-    IF (NEW.state = 'sold') THEN
-        SET NEW.marked_sold = OLD.marked_sold + 1;
-    END IF;
-END //
 DELIMITER ;
 /* insert into people (username) values('Ntsuhwork'); */
 /* insert into channels (username, admin, license_expiry) values('mygeb', 'Ntsuhwork', '1572382800'); */
-insert into people (username) values('K1DV5');
+insert into people (username, chat_id) values('K1DV5', '479319265');
 insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1572382800');
 /* insert into posts (channel, message_id, title) values ('mygeb', 45, 'foo'); */
 /* select * from posts where channel = 'mygeb' AND message_id = 45; */

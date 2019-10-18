@@ -29,10 +29,10 @@ class BaseModel {
         } else { // an object passed
             values = []
             for (let [key, val] of Object.entries(index).filter(pair => this.cols.includes(pair[0]))) {
-                where += key + '=?,'
+                where += key + '=? AND '
                 values.push(val)
             }
-            where = where.slice(0, where.length-1) // remove last comma
+            where = where.slice(0, where.length-5) // remove last AND
         }
         return {where, values}
     }
@@ -83,11 +83,24 @@ class BaseModel {
         if (typeof cols === 'string') {
             if (this.cols.includes(cols)) {
                 let query = 'SELECT ' + cols + ' FROM ' + this.table + where
-                return (await this.sql(query, values))[0][cols]
+                let result = await this.sql(query, values)
+                if (result.length) {
+                    return result[0][cols]
+                }
+                return null
             }
         }
-        let available = cols.filter(col => this.cols.includes(col))
-        let query = 'SELECT ' + available.join(',') + ' FROM ' + this.table + where
+        if (cols === undefined) {
+            cols = '*'
+        } else {
+            let available = cols.filter(col => this.cols.includes(col))
+            if (available) {
+                cols = available.join(',')
+            } else {
+                return null
+            }
+        }
+        let query = 'SELECT ' + cols + ' FROM ' + this.table + where
         let result = await this.sql(query, values)
         if (result.length === 1) {
             return result[0]
