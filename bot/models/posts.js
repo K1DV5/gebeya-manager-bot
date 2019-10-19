@@ -1,7 +1,7 @@
 const BaseModel = require('./base')
 
 class posts extends BaseModel {
-    constructor(dbConn) {
+    constructor() {
         let cols = [
             'message_id',
             'channel',
@@ -16,7 +16,7 @@ class posts extends BaseModel {
             'post_date',
             'sold_date'
         ]
-        super(dbConn, 'posts', cols)
+        super('posts', cols)
     }
 
     delete(messageId) {

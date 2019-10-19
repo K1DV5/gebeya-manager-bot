@@ -3,7 +3,7 @@ const {downloadFile} = require('../utils')
 
 async function handleSettings(ctx) {
     let username = ctx.from.username
-    let hasValidChannels = await ctx.people.getChannels(username, ctx.update.message.date)
+    let hasValidChannels = await ctx.people.getChannels(username, ctx.update.message.date, 'setting')
     if (hasValidChannels) {
         ctx.reply('What do you want to change?', {
             reply_markup: {
@@ -16,7 +16,8 @@ async function handleSettings(ctx) {
                     [
                         { text: 'Sold template', callback_data: 'settings:sold_template' },
                         { text: 'Description bullet', callback_data: 'settings:description_bullet' },
-                    ]
+                    ],
+                    [{ text: 'Update permissions', callback_data: 'settings:channel_permissions' }]
                 ]
             }
         })
@@ -72,6 +73,15 @@ const settingSpectficParams = {
             let text = '<i>You will be changing the bullet point characters in the description of the item you post on</i> @' + channel + ', <i>here is the current one. Send a new phrase that you want to appear when you begin lines with "." (dot) in the description.</i>\n\n' + currentBullet
             return text
         }
+    },
+    channel_permissions: {
+        finalConvo: 'settings.channel_permissions',
+        introText: 'Which channel do you want to update permissions of?',
+        finalText: async (ctx, channel) => {
+            let admins = await ctx.telegram.getChatAdministrators('@' + channel)
+            await ctx.channels.updatePermissions(channel, admins)
+            return 'The permissions for @' + channel + ' have been updated.'
+        }
     }
 }
 
@@ -80,7 +90,7 @@ async function handleSettingIntro(ctx) {
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     let type = ctx.update.callback_query.data
-    let channels = await ctx.people.getChannels(username, ctx.update.callback_query.message.date)
+    let channels = await ctx.people.getChannels(username, ctx.update.callback_query.message.date, 'setting')
     if (channels.length > 1) {
         let buttons = channels.map(ch => {return {text: '@' + ch, callback_data: 'settings:' + type + '.' + ch}})
         let keyboard = makeKeyboardTiles(buttons)
@@ -106,8 +116,9 @@ async function handleSettingChannel(ctx) {
     ctx.people.set(username, {conversation: convo, to_update: channel})
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
-    let text = await settingSpectficParams[type].finalText(ctx, channel)
-    ctx.telegram.editMessageText(chatId, messageId, undefined, text, {parse_mode: 'html'})
+    let current = settingSpectficParams[type]
+    let text = await current.finalText(ctx, channel)
+    ctx.telegram.editMessageText(chatId, messageId, undefined, text, { parse_mode: 'html', })
 }
 
 async function handleSettingTextContactText(ctx) {
