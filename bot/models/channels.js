@@ -30,11 +30,11 @@ class channels extends BaseModel {
     async updatePermissions(channel, admins) {
         // channel: string
         // permissions: {username: {status: string, ...permissions: string}}
+        await this.sql('DELETE FROM channel_permissions WHERE channel = ?', [channel])
         for (let admin of admins) {
             if (admin.status === 'administrator') {
                 let username = admin.user.username
                 // clear the current one
-                await this.sql('DELETE FROM channel_permissions WHERE channel = ? AND person = ?', [channel, username])
                 await this.sql(`DELETE FROM people WHERE username = ?
                                     AND username NOT IN (SELECT admin FROM channels)
                                     AND username NOT IN (SELECT person FROM channel_permissions)`,

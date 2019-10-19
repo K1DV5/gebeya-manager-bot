@@ -45,6 +45,7 @@ test routes
     sold templ ✅
     contact text ✅
     desc bullet ✅
+    permissions
 
 ✅ /license
 ✅ /help
