@@ -20,7 +20,7 @@ async function handlePost(ctx) {
         ctx.people.set(username, {to_update: channels[0], conversation: 'post.title'})
         ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
     } else {
-        let keyboard = makeKeyboardTiles(channels.map(ch => {return {text: '@' + channel, callback_data: 'post_channel:' + ch}}))
+        let keyboard = makeKeyboardTiles(channels.map(ch => {return {text: '@' + ch, callback_data: 'post_channel:' + ch}}))
         ctx.reply('Which channel do you want to post to?', {
             reply_markup: {
                 inline_keyboard: keyboard,
@@ -31,11 +31,11 @@ async function handlePost(ctx) {
 
 async function handleChannelStage(ctx) {
     let username = ctx.from.username
-    let channel = ctx.update.callback_query.data.split(':')[1]
+    let channel = ctx.update.callback_query.data
     ctx.people.set(username, {to_update: channel, conversation: 'post.title'})
     let chatId = ctx.update.callback_query.from.id
-    let messageId = ctx.message.message_id
-    let text = 'You will be posting to @' + channel + '.What is the title of the post?'
+    let messageId = ctx.update.callback_query.message.message_id
+    let text = 'You will be posting to @' + channel + '. What is the title of the post?'
     ctx.telegram.editMessageText(chatId, messageId, undefined, text)
 }
 
