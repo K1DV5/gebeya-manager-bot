@@ -88,17 +88,26 @@ class people extends BaseModel {
 
     async getChannels(username, licenseValidOn, purpose) {
         let query = `SELECT c.username, c.license_expiry
-                     FROM channels as c
-                     INNER JOIN people AS p
-                     ON p.username = c.admin
-                     WHERE p.username = ?`
+                         FROM channels as c
+                             INNER JOIN people AS p
+                         ON p.username = c.admin
+                         WHERE p.username = ?`
         let values = [username]
         if (purpose === 'post') {
             query += ` UNION SELECT c.username, c.license_expiry
-                        FROM post_permissions AS pp
-                        INNER JOIN channels AS c
-                        ON pp.channel = c.username
-                        WHERE pp.person = ?`
+                            FROM channel_permissions AS cp
+                            INNER JOIN channels AS c
+                                ON cp.channel = c.username
+                                AND cp.post IS TRUE
+                            WHERE cp.person = ?`
+            values.push(username)
+        } else if (purpose === 'setting') {
+            query += ` UNION SELECT c.username, c.license_expiry
+                            FROM channel_permissions AS cp
+                            INNER JOIN channels AS c
+                                ON cp.channel = c.username
+                                AND cp.setting IS TRUE
+                            WHERE cp.person = ?`
             values.push(username)
         }
         let channelsInfo = await this.sql(query, values)

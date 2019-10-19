@@ -3,7 +3,7 @@ const {downloadFile} = require('../utils')
 
 async function handleSettings(ctx) {
     let username = ctx.from.username
-    let hasValidChannels = await ctx.people.getChannels(username, ctx.update.message.date)
+    let hasValidChannels = await ctx.people.getChannels(username, ctx.update.message.date, 'setting')
     if (hasValidChannels) {
         ctx.reply('What do you want to change?', {
             reply_markup: {
@@ -17,7 +17,7 @@ async function handleSettings(ctx) {
                         { text: 'Sold template', callback_data: 'settings:sold_template' },
                         { text: 'Description bullet', callback_data: 'settings:description_bullet' },
                     ],
-                    [{ text: 'Post permissions', callback_data: 'settings:post_permissions' }]
+                    [{ text: 'Update permissions', callback_data: 'settings:channel_permissions' }]
                 ]
             }
         })
@@ -74,16 +74,14 @@ const settingSpectficParams = {
             return text
         }
     },
-    post_permissions: {
-        finalConvo: 'settings.post_permissions',
-        introText: 'Which channel do you want to manage post permissions on?',
+    channel_permissions: {
+        finalConvo: 'settings.channel_permissions',
+        introText: 'Which channel do you want to update permissions of?',
         finalText: async (ctx, channel) => {
-            '<i>You will be changing the post permissions on</i> @' + channel + ', <i>choose one of the options below</i>.'
+            await ctx.channels.updatePermissions(channel)
+            let text = 'The permissions for @' + channel + ' have been updated.'
+            ctx.reply(text)
         },
-        keyboard: [[
-            {text: 'Add someone', callback_data: 'settings.post_permissions.add'},
-            {text: 'Revoke someone', callback_data: 'settings.post_permissions.revoke'}
-        ]]
     }
 }
 
@@ -92,7 +90,7 @@ async function handleSettingIntro(ctx) {
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     let type = ctx.update.callback_query.data
-    let channels = await ctx.people.getChannels(username, ctx.update.callback_query.message.date)
+    let channels = await ctx.people.getChannels(username, ctx.update.callback_query.message.date, 'setting')
     if (channels.length > 1) {
         let buttons = channels.map(ch => {return {text: '@' + ch, callback_data: 'settings:' + type + '.' + ch}})
         let keyboard = makeKeyboardTiles(buttons)
@@ -120,12 +118,7 @@ async function handleSettingChannel(ctx) {
     let messageId = ctx.update.callback_query.message.message_id
     let current = settingSpectficParams[type]
     let text = await current.finalText(ctx, channel)
-    ctx.telegram.editMessageText(chatId, messageId, undefined, text,
-        {
-            parse_mode: 'html',
-            reply_markup: {inline_keyboard: current.keyboard}
-        }
-    )
+    ctx.telegram.editMessageText(chatId, messageId, undefined, text, { parse_mode: 'html', })
 }
 
 async function handleSettingTextContactText(ctx) {
@@ -197,40 +190,6 @@ async function handleSettingLogoDoc(ctx) {
     }
 }
 
-async function handleSettingsAddPoster(ctx) {
-    let username = ctx.from.username
-    let channel = await ctx.people.get(username, 'to_update')
-    if (ctx.updateType === 'callback_query') {
-        ctx.people.set(username, {conversation: 'settings.post_permissions.add'})
-        ctx.reply('Send the username of the person you want to allow to post on @' + channel + '.')
-    } else {
-        let newPerson = ctx.message.text
-        ctx.channels.addPoster(channel, newPerson)
-        ctx.reply('Done, @' + newPerson + ' can now post on @' + channel + ' using this bot.')
-        ctx.people.set(username, {conversation: null})
-    }
-}
-
-async function handleSettingsRevokePoster(ctx) {
-    let username = ctx.from.username
-    let channel = await ctx.people.get(username, 'to_update')
-    if (ctx.state.convo === 'settings.post_permissions.revoke') {
-        let toRevoke = ctx.update.callback_query.data
-        ctx.channels.revokePoster(channel, toRevoke)
-        ctx.reply('Done, @' + toRevoke + ' will not be posting on @' + channel + '.')
-        ctx.people.set(username, {conversation: null})
-    } else {
-        let permitted = await ctx.channels.getPosters(channel)
-        let buttons = permitted.map(p => {return {text: p, callback_data: 'revoke:' + p}})
-        ctx.reply('These are the people allowed to post on @' + channel + '. Select which to revoke their permission.', {
-            reply_markup: {
-                inline_keyboard: buttons
-            }
-        })
-        ctx.people.set(username, {conversation: 'settings.post_permissions.revoke'})
-    }
-}
-
 module.exports = {
     handleSettings,
     handleSettingIntro,
@@ -240,6 +199,4 @@ module.exports = {
     handleSettingTextCaptionTempl,
     handleSettingTextContactText,
     handleSettingLogoDoc,
-    handleSettingsAddPoster,
-    handleSettingsRevokePoster
 }

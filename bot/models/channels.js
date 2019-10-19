@@ -27,22 +27,27 @@ class channels extends BaseModel {
         return (await this.sql('SELECT username FROM ' + this.table)).map(ch => ch.username)
     }
 
-    async getPosters(channel) {
-        let posters = await this.sql('SELECT person FROM post_permissions WHERE channel = ?', [channel])
-        return posters.map(p => p.person)
-    }
-
-    async addPoster(channel, person) {
-        await this.sql('INSERT IGNORE INTO people (username) VALUES (?)', [person])
-        this.sql('INSERT IGNORE INTO post_permissions (channel, person) VALUES (?,?)', [channel, person])
-    }
-
-    async revokePoster(channel, person) {
-        await this.sql('DELETE FROM post_permissions WHERE channel = ? AND person = ?', [channel, person])
-        this.sql(`DELETE FROM people WHERE username = ?
-                    AND username NOT IN (SELECT admin FROM channels)
-                    AND username NOT IN (SELECT person FROM post_permissions)`,
-        [person])
+    async updatePermissions(channel, admins) {
+        // channel: string
+        // permissions: {username: {status: string, ...permissions: string}}
+        for (let admin of admins) {
+            let username = admin.user.username
+            if (admin.status !== 'creator' && username) {
+                // clear the current one
+                await this.sql('DELETE FROM channel_permissions WHERE channel = ? AND person = ?', [channel, username])
+                await this.sql(`DELETE FROM people WHERE username = ?
+                                    AND username NOT IN (SELECT admin FROM channels)
+                                    AND username NOT IN (SELECT person FROM channel_permissions)`,
+                    [username])
+                // insert anew
+                await this.sql('INSERT IGNORE INTO people (username) VALUES (?)', [person])
+                let canPost = admin.can_post_messages
+                let canChangeSettings = admin.can_change_info
+                this.sql('INSERT INTO channel_permissions (channel, person, post, setting) VALUES (?,?,?,?)',
+                    [channel, username, canPost, canChangeSettings]
+                )
+            }
+        }
     }
 }
 
