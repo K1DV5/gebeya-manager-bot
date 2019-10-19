@@ -1,7 +1,7 @@
 const BaseModel = require('./base')
 
 class people extends BaseModel {
-    constructor(dbConn) {
+    constructor() {
         let table = 'people'
         let cols = ['username',
                     'chat_id',
@@ -14,7 +14,7 @@ class people extends BaseModel {
                     'settings_channel',
                     'conversation',
                     ]
-        super(dbConn, table, cols)
+        super(table, cols)
     }
 
     async getConvo(username) {
@@ -86,13 +86,22 @@ class people extends BaseModel {
              WHERE username = ?`, [username])
     }
 
-    async getChannels(username, licenseValidOn) {
+    async getChannels(username, licenseValidOn, purpose) {
         let query = `SELECT c.username, c.license_expiry
                      FROM channels as c
                      INNER JOIN people AS p
                      ON p.username = c.admin
                      WHERE p.username = ?`
-        let channelsInfo = await this.sql(query, [username])
+        let values = [username]
+        if (purpose === 'post') {
+            query += ` UNION SELECT c.username, c.license_expiry
+                        FROM post_permissions AS pp
+                        INNER JOIN channels AS c
+                        ON pp.channel = c.username
+                        WHERE pp.person = ?`
+            values.push(username)
+        }
+        let channelsInfo = await this.sql(query, values)
         if (licenseValidOn) {
             let channels = channelsInfo
                 .filter(ch => ch.license_expiry*1 > licenseValidOn*1)
@@ -103,8 +112,9 @@ class people extends BaseModel {
     }
 }
 
-// p = new people()
+p = new people()
 // p.getConvo('K1DV5').then(console.log)
 // p.exists('K1DV5').then(console.log)
+// p.getChannels('kid',null,'post').then(console.log)
 
 module.exports = people

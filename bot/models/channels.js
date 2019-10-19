@@ -1,7 +1,7 @@
 const BaseModel = require('./base')
 
 class channels extends BaseModel {
-    constructor(dbConn) {
+    constructor() {
         let table = 'channels'
         let cols = [
             'username',
@@ -12,7 +12,7 @@ class channels extends BaseModel {
             'license_expiry',
             'description_bullet'
         ]
-        super(dbConn, table, cols)
+        super(table, cols)
     }
 
     async licenseIsValid(username, asOf) {
@@ -26,9 +26,32 @@ class channels extends BaseModel {
     async getUsernames() {
         return (await this.sql('SELECT username FROM ' + this.table)).map(ch => ch.username)
     }
+
+    async getPosters(channel) {
+        let posters = await this.sql('SELECT person FROM post_permissions WHERE channel = ?', [channel])
+        return posters.map(p => p.person)
+    }
+
+    async addPoster(channel, person) {
+        await this.sql('INSERT IGNORE INTO people (username) VALUES (?)', [person])
+        this.sql('INSERT IGNORE INTO post_permissions (channel, person) VALUES (?,?)', [channel, person])
+    }
+
+    async revokePoster(channel, person) {
+        await this.sql('DELETE FROM post_permissions WHERE channel = ? AND person = ?', [channel, person])
+        this.sql(`DELETE FROM people WHERE username = ?
+                    AND username NOT IN (SELECT admin FROM channels)
+                    AND username NOT IN (SELECT person FROM post_permissions)`,
+        [person])
+    }
 }
 
 // let c = new channels()
-// c.getUsernames().then(console.log)
+// c.addPoster('mygeb', 'kid').then(()=> {
+// c.getPosters('mygeb').then(console.log)
+// })
+// c.revokePoster('mygeb', 'kid').then(()=>{
+// c.getPosters('mygeb').then(console.log)
+// })
 
 module.exports = channels

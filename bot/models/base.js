@@ -1,9 +1,29 @@
+const os = require('os')
+const mysql = require('mysql')
+
+let connection
+if (os.hostname() === 'K1DV5') {
+    connection = mysql.createConnection({
+        host: 'localhost',
+        user: 'k1dv5com_tg_bot',
+        database: 'k1dv5com_tg_gebeya'
+    })
+} else {
+    connection = mysql.createConnection({
+        host: 'cpanel.k1dv5.com',
+        user: 'k1dv5com_tg_bot',
+        password: 'tg_bot_pass',
+        database: 'k1dv5com_tg_gebeya'
+    })
+}
+
+connection.connect()
 
 class BaseModel {
-    constructor(dbConn, table, cols) {
+    constructor(table, cols) {
         this.cols = cols
         this.table = table
-        this.dbConn = dbConn
+        this.dbConn = connection
     }
 
     sql(sql, args) {
@@ -125,5 +145,7 @@ class BaseModel {
 // b.exists('K1DV5').then(console.log)
 // b.insert({username: 'K1DV5'})
 // b.get('K1DV5', ['chat_id']).then(console.log)
+
+// connection.end()
 
 module.exports = BaseModel

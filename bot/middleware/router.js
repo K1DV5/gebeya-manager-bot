@@ -17,6 +17,7 @@ const callbackHandlers = {
     'edit_after:': post.handleEditSaveDiscard, // after some changs are made, save or discard
     'delete:': post.handleDeletePost,
     'settings:': settings.handleSettingIntro,
+    'revoke:': settings.handleSettingsRevokePoster,
 }
 
 const innerCommands = ['/end']
@@ -186,6 +187,13 @@ async function router(ctx) {
                 settings.handleSettingTextDescBullet(ctx)
             } else {
                 ctx.reply('Please send a text for the description bullet, or maybe you need /help.')
+            }
+            return
+        } else if (convo === 'settings.post_permissions.add') {
+            if (updateSubTypes.includes('text')) {
+                settings.handleSettingsAddPoster(ctx)
+            } else {
+                ctx.reply('Please send the username of the person to allow posting, or maybe you need /help.')
             }
             return
         } else {
