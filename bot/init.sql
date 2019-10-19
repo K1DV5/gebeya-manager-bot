@@ -7,8 +7,8 @@ SET NAMES utf8mb4;
 DROP TABLE IF EXISTS channel_permissions, posts, channels, people;
 
 /* admins of channels */
-CREATE TABLE people (username VARCHAR(128) PRIMARY KEY,
-                     chat_id VARCHAR(255),
+CREATE TABLE people (username VARCHAR(96) PRIMARY KEY,
+                     chat_id VARCHAR(96),
                      draft_title VARCHAR(255),
                      draft_description VARCHAR(3000),
                      draft_price VARCHAR(255) DEFAULT '[Not given]',
@@ -21,8 +21,8 @@ CREATE TABLE people (username VARCHAR(128) PRIMARY KEY,
 ) ENGINE = INNODB;
 
 /* channels owned by admins, an admin can have more than one channel */
-CREATE TABLE channels (username VARCHAR(128) PRIMARY KEY,
-                       admin VARCHAR(128),
+CREATE TABLE channels (username VARCHAR(96) PRIMARY KEY,
+                       admin VARCHAR(96),
                        contact_text VARCHAR(255),
                        caption_template VARCHAR(1024) DEFAULT ':title\n\n:description\n\nPrice: :price',
                        sold_template VARCHAR(1024) DEFAULT '===( SOLD )===\n\n:caption\n\n===( SOLD )===',
@@ -32,7 +32,7 @@ CREATE TABLE channels (username VARCHAR(128) PRIMARY KEY,
 ) ENGINE = INNODB;
 
 /* posts by the bot, */
-CREATE TABLE posts (channel VARCHAR(128),
+CREATE TABLE posts (channel VARCHAR(96),
                     message_id VARCHAR(96),
                     title VARCHAR(255),
                     description VARCHAR(2440),
@@ -48,10 +48,10 @@ CREATE TABLE posts (channel VARCHAR(128),
 ) ENGINE = INNODB;
 
 CREATE TABLE channel_permissions (
-    person VARCHAR(255),
-    channel VARCHAR(255),
-    post BOOL,
-    setting BOOL,
+    person VARCHAR(96),
+    channel VARCHAR(96),
+    post BOOLEAN,
+    setting BOOLEAN,
     PRIMARY KEY (person, channel),
     FOREIGN KEY (channel) REFERENCES channels(username),
     FOREIGN KEY (person) REFERENCES people(username)
@@ -69,5 +69,5 @@ DELIMITER ;
 /* insert into channels (username, admin, license_expiry) values('mygeb', 'Ntsuhwork', '1572382800'); */
 insert into people (username, chat_id) values('K1DV5', '479319265');
 insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1572382800');
-/* insert into channel_permissions (channel, person, post, setting) values('mygeb', 'K1DV5', true, 9) */
+insert into channel_permissions (channel, person, post, setting) values('mygeb', 'K1DV5', true, 9)
 /* insert into posts (channel, message_id, title) values ('mygeb', 45, 'foo'); */
