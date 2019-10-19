@@ -31,8 +31,8 @@ class channels extends BaseModel {
         // channel: string
         // permissions: {username: {status: string, ...permissions: string}}
         for (let admin of admins) {
-            let username = admin.user.username
-            if (admin.status !== 'creator' && username) {
+            if (admin.status === 'administrator') {
+                let username = admin.user.username
                 // clear the current one
                 await this.sql('DELETE FROM channel_permissions WHERE channel = ? AND person = ?', [channel, username])
                 await this.sql(`DELETE FROM people WHERE username = ?
@@ -40,7 +40,7 @@ class channels extends BaseModel {
                                     AND username NOT IN (SELECT person FROM channel_permissions)`,
                     [username])
                 // insert anew
-                await this.sql('INSERT IGNORE INTO people (username) VALUES (?)', [person])
+                await this.sql('INSERT IGNORE INTO people (username) VALUES (?)', [username])
                 let canPost = admin.can_post_messages
                 let canChangeSettings = admin.can_change_info
                 this.sql('INSERT INTO channel_permissions (channel, person, post, setting) VALUES (?,?,?,?)',
