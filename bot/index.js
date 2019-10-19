@@ -40,10 +40,12 @@ bot.use(router)
 bot.launch().then(() => console.log('bot listening...')).catch((err)=>{console.log(err.message)})
 
 // for web requests
-var server = https.createServer(function(req, res) {
-    res.writeHead(200, {'Content-Type': 'text/html'})
-    var message = 'This is a telegram bot. Go to <a href="https://t.me/GebeyaManagerBot">here</a> and talk to it.'
-    res.end(message)
-})
-// server.listen(3000, () => console.log('server listening...'));
+if (os.hostname() !== 'K1DV5') {
+    let server = https.createServer(function(req, res) {
+        res.writeHead(200, {'Content-Type': 'text/html'})
+        let message = 'This is a telegram bot. Go to <a href="https://t.me/GebeyaManagerBot">here</a> and talk to it.'
+        res.end(message)
+    })
+    server.listen(3000, () => console.log('server listening...'));
+}
 
