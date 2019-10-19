@@ -4,7 +4,21 @@ async function handleWelcomeStart(ctx) {
     if (ctx.state.isChannelAdmin) {
         // store the chat id for the username
         ctx.people.set(username, {chat_id: ctx.chat.id})
-        ctx.reply('Welcome, now I can talk to you. Please send /post to post a new item.')
+        let name = ctx.from.first_name || username
+        ctx.reply('Welcome, ' + name + ', please send\n/post to post a new item. Or you can go to\n/help to know more.', {
+            reply_markup: {
+                keyboard: [[
+                    {text: '/post'},
+                    {text: '/settings'},
+                    {text: '/cancel'}
+                ], [
+                    {text: '/license', request_location: true},
+                    {text: '/help'},
+                ]],
+                resize_keyboard: true,
+                one_time_keyboard: true
+            },
+        })
     } else {
         let reply = 'Welcome, please go to one of our channels '
         let channels = await ctx.channels.getUsernames()
@@ -34,7 +48,6 @@ async function handleStart(ctx) {
     let [channel, postId] = messageIdDb.split('/')
     let message = await ctx.posts.get({channel, message_id: postId})
     if (message) {
-        debugger
         // send messages to both parties.
         let itemText = 'this item'
         let itemLink = `<a href="https://t.me/${messageIdDb}">${itemText}</a>`

@@ -35,10 +35,6 @@ bot.context.admins = SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES
 // bot.catch(err => {console.log(err.message)})
 
 // do actual work
-// bot.command('try', async (ctx) => {
-//     let members = await ctx.telegram.getChatAdministrators('@mygeb')
-//     console.log(members)
-// })
 bot.use(router)
 
 bot.launch().then(() => console.log('bot listening...')).catch((err)=>{console.log(err.message)})

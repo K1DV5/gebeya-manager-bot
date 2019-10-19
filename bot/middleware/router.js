@@ -4,6 +4,7 @@ const post = require('../handlers/post')
 const help = require('../handlers/help')
 const license = require('../handlers/license')
 const settings = require('../handlers/settings')
+const cancel = require('../handlers/cancel')
 
 // the callback data comes in like main_task:data and the keys are main_task
 const callbackHandlers = {
@@ -19,7 +20,7 @@ const callbackHandlers = {
     'settings:': settings.handleSettingIntro,
 }
 
-const innerCommands = ['/end']
+const innerCommands = ['/end', '/cancel']
 
 async function router(ctx) {
     let username = ctx.from.username
@@ -80,6 +81,9 @@ async function router(ctx) {
                     return
                 } else if (command === '/license') {
                     license.handleLicense(ctx)
+                    return
+                } else if (command === '/cancel') {
+                    cancel.handleCancel(ctx)
                     return
                 } else if (!innerCommands.includes(command)) {
                     ctx.reply('The command ' + command + ' is not supported. Look at the /help.')
