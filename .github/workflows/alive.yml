@@ -1,0 +1,13 @@
+name: keep-alive
+
+on:
+    schedule:
+        - cron: '0,6,12,18 0 * * *'
+
+jobs:
+    ping:
+        name: Ping the server
+        runs-on: ubuntu-latest
+        steps:
+            - name: ping server
+              run: curl http://k1dv5.com/tg-gebeya
