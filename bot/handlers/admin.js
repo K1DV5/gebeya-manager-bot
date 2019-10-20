@@ -7,16 +7,25 @@ async function handleAdminAdd(ctx) {
     if (args.p === '1221') {
         if (args.u && args.c && args.e) {
             let admins
-            try {
-                admins = await ctx.telegram.getChatAdministrators('@' + args.c + 'eya')
+            try { // to check if the bot is an admin
+                admins = await ctx.telegram.getChatAdministrators('@' + args.c)
+                let botIsAdmin = admins.filter(a => 
+                    a.user &&
+                    a.user.username === ctx.botInfo.username &&
+                    a.can_post_messages).length
+                if (!botIsAdmin) {
+                    ctx.reply('The bot has not been given necessary access: must be admin with Post messags permission.')
+                    return
+                }
             } catch(err) {
                 if (err.code === 400) {
-                    ctx.reply(err.description + '\n\nMaybe the bot is not added to the channel')
+                    ctx.reply(err.description + '\n\nMaybe the bot is not added to the channel, or the channel doesn\'t exist.')
                 } else {
                     ctx.reply(err.code)
                 }
                 return
             }
+
             await ctx.people.insert({username: args.u})
             let licenseExpiry = new Date(args.e)
             ctx.channels.insert({
