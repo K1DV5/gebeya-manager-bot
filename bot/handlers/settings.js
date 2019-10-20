@@ -1,5 +1,5 @@
 const path = require('path')
-const {downloadFile} = require('../utils')
+const {downloadFile, makeKeyboardTiles} = require('../utils')
 
 async function handleSettings(ctx) {
     let username = ctx.from.username
@@ -89,8 +89,12 @@ async function handleSettingIntro(ctx) {
     let username = ctx.from.username
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
-    let type = ctx.update.callback_query.data
+    let [type, channel] = ctx.update.callback_query.data.split('.')
     let channels = await ctx.people.getChannels(username, ctx.update.callback_query.message.date, 'setting')
+    if (channel) {
+        handleSettingChannel(ctx)
+        return
+    }
     if (channels.length > 1) {
         let buttons = channels.map(ch => {return {text: '@' + ch, callback_data: 'settings:' + type + '.' + ch}})
         let keyboard = makeKeyboardTiles(buttons)
