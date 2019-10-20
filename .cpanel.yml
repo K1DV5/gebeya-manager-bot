@@ -4,5 +4,3 @@ deployment:
     - export DEPLOYPATH=/home/k1dv5com/tg-gebeya/
     - /bin/cp -R bot $DEPLOYPATH
     - /bin/cp package.json $DEPLOYPATH
-    - source /home/k1dv5com/nodevenv/tg-gebeya/10/bin/activate && cd /home/k1dv5com/tg-gebeya
-    - node bot/index.json
