@@ -28,7 +28,7 @@ async function handleAdminAdd(ctx) {
 
             await ctx.people.insert({username: args.u})
             let licenseExpiry = new Date(args.e)
-            ctx.channels.insert({
+            await ctx.channels.insert({
                 username: args.c,
                 admin: args.u,
                 license_expiry: licenseExpiry.getTime()/1000, // by 1000 to convert to seconds
