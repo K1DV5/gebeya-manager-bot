@@ -4,9 +4,6 @@ const os = require('os')
 const path = require('path')
 const Telegraf = require('telegraf')
 const fs = require('fs')
-const express = require('express')
-const https = require('https')
-
 
 // the router
 const router = require('./middleware/router')
@@ -18,8 +15,6 @@ const postsModel = require('./models/posts')
 
 const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
 
-let expressApp
-
 let bot
 let tlsOptions
 if (os.hostname() === 'K1DV5') {
@@ -27,20 +22,15 @@ if (os.hostname() === 'K1DV5') {
     // bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
 } else {
     const cert = path.join(__dirname, '../self-server-cert.pem')
-    // const key = path.join(__dirname, '../self-server-key.pem')
+    const key = path.join(__dirname, '../self-server-key.pem')
     try {
-        expressApp = express()
-        expressApp.get('/tg-test', (req, res) => {
-            res.send('A bot!')
-        })
         bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
-        expressApp.use(bot.webhookCallback('/tg-gebeya'))
-        // tlsOptions = {
-        //     cert: fs.readFileSync(cert),
-        //     key: fs.readFileSync(key),
-        // }
+        tlsOptions = {
+            cert: fs.readFileSync(cert),
+            key: fs.readFileSync(key),
+        }
 
-        // // Set telegram webhook
+        // Set telegram webhook
         bot.telegram.setWebhook('https://k1dv5.com:8443/tg-gebeya', { source: cert })
             .then(fs.writeFileSync('scc-webhook1.txt', 'Webhook set'))
     } catch(err) {
@@ -66,16 +56,8 @@ if (os.hostname() === 'K1DV5') {
     bot.launch().then(() => console.log('bot listening...')).catch((err)=>{console.log(err.message)})
 } else {
     try {
-        const cert = path.join(__dirname, '../self-server-cert.pem')
-        const key = path.join(__dirname, '../self-server-key.pem')
-        https.createServer({
-          key: fs.readFileSync(key),
-          cert: fs.readFileSync(cert)
-        }, expressApp).listen(8443, () => {
-          console.log('Listening...')
-        });
-        // bot.startWebhook('/tg-gebeya', tlsOptions, 8443)
-        // fs.writeFileSync('scc-webhook2.txt', 'Webhook started')
+        bot.startWebhook('/tg-gebeya', tlsOptions, 8443)
+        fs.writeFileSync('scc-webhook2.txt', 'Webhook started')
     } catch(err) {
         fs.writeFileSync('err-webhook-start.txt', err)
     }
