@@ -48,7 +48,7 @@ async function router(ctx) {
     }
     // not else because the admin can be a channel admin as well
 
-    ctx.state.isChannelAdmin = ctx.people.exists(username)
+    ctx.state.isChannelAdmin = await ctx.people.exists(username)
     if (ctx.state.isChannelAdmin) {
         // conversation independent ----------------------------------------------
         if (updateType === 'callback_query') {
