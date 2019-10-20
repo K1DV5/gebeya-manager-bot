@@ -41,7 +41,7 @@ async function router(ctx) {
                 let command = ctx.message.text.split(' ', 1)[0]
                 if (command === '/adminadd') {
                     admin.handleAdminAdd(ctx)
-                    return
+                    return 1
                 }
             }
         }
