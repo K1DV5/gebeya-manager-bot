@@ -21,28 +21,23 @@ if (os.hostname() === 'K1DV5') {
     bot = new Telegraf('959496597:AAEWFvI1oYv58RLrrckR_c1cW-4-tPZ1Pjw') // the testing bot
     // bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
 } else {
+    const cert = path.join(__dirname, '../self-server-cert.pem')
+    const key = path.join(__dirname, '../self-server-key.pem')
     try {
         bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
-        // TLS options
         tlsOptions = {
-            cert: fs.readFileSync(path.join(__dirname, '../self-server-cert.pem')),
-            key: fs.readFileSync(path.join(__dirname, '../self-server-key.pem')),
-          // ca: [
-          //   // This is necessary only if the client uses a self-signed certificate.
-          //   fs.readFileSync('client-cert.pem')
-          // ]
+            cert: fs.readFileSync(cert),
+            key: fs.readFileSync(key),
         }
 
         // Set telegram webhook
-        // The second argument is necessary only if the client uses a self-signed 
-        // certificate. Including it for a verified certificate may cause things to break.
-        bot.telegram.setWebhook('https://k1dv5.com:8443/tg-gebeya', {
-            source: path.join(__dirname, '../self-server-cert.pem')
-        })
+        bot.telegram.setWebhook('https://k1dv5.com:8443/tg-gebeya', { source: cert })
+            .then(fs.writeFileSync('scc-webhook1.txt', 'Webhook set'))
     } catch(err) {
         fs.writeFileSync('err-webhook-set.txt', err)
     }
 }
+
 // the data models
 bot.context.people = new peopleModel()
 bot.context.channels = new channelsModel()
@@ -54,13 +49,7 @@ bot.context.fallbackReply = 'Error, don\'t know what you want to do. Maybe you n
 // the sys admins
 bot.context.admins = SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES
 
-// bot.catch(err => {console.log(err.message)})
-
-
 // do actual work
-// bot.command('try', (ctx) => {
-//     console.log(ctx)
-// })
 bot.use(router)
 
 if (os.hostname() === 'K1DV5') {
@@ -68,7 +57,14 @@ if (os.hostname() === 'K1DV5') {
 } else {
     try {
         bot.startWebhook('/tg-gebeya', tlsOptions, 8443)
+        fs.writeFileSync('scc-webhook2.txt', 'Webhook started')
     } catch(err) {
         fs.writeFileSync('err-webhook-start.txt', err)
     }
+    const express = require('express')
+    let page = express()
+    page.get('/tg-test', (req, res) => {
+        res.send('A bot! the gods have given me a...')
+        res.end()
+    })
 }
