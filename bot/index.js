@@ -17,7 +17,7 @@ const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
 
 let bot
 let tlsOptions
-if (os.hostname() === 'K1DV5') {
+if (os.hostname() !== 'K1DV5') {
     bot = new Telegraf('959496597:AAEWFvI1oYv58RLrrckR_c1cW-4-tPZ1Pjw') // the testing bot
     // bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
 } else {
@@ -52,7 +52,7 @@ bot.context.admins = SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES
 // do actual work
 bot.use(router)
 
-if (os.hostname() === 'K1DV5') {
+if (os.hostname() !== 'K1DV5') {
     bot.launch().then(() => console.log('bot listening...')).catch((err)=>{console.log(err.message)})
 } else {
     try {
