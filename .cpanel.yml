@@ -1,0 +1,6 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/k1dv5com/tg-gebeya/
+    - /bin/cp -R bot $DEPLOYPATH
+    - /bin/cp package.json $DEPLOYPATH
