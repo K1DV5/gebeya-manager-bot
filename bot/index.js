@@ -63,7 +63,7 @@ if (os.hostname() === 'K1DV5') {
     }
     const express = require('express')
     let page = express()
-    page.get('/tg-gebeya', (req, res) => {
+    page.get('/tg-test', (req, res) => {
         res.send('A bot! the gods have given me a...')
         res.end()
     })
