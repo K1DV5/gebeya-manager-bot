@@ -23,7 +23,11 @@ const callbackHandlers = {
 const innerCommands = ['/end', '/cancel']
 
 async function router(ctx) {
+    if (!ctx.from) { // some updates aren't from a person, like channel post editted...
+        return 1
+    }
     let username = ctx.from.username
+
     // updateType: 'message',
     // updateSubTypes: [ 'text' ],
     let updateType = ctx.updateType
@@ -206,6 +210,8 @@ async function router(ctx) {
             ctx.reply(ctx.fallbackReply)
         }
     }
+
+    return 1
 }
 
 module.exports = router

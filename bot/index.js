@@ -18,10 +18,11 @@ const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
 let bot
 let tlsOptions
 if (os.hostname() === 'K1DV5') {
-    bot = new Telegraf('959496597:AAEWFvI1oYv58RLrrckR_c1cW-4-tPZ1Pjw')
+    bot = new Telegraf('959496597:AAEWFvI1oYv58RLrrckR_c1cW-4-tPZ1Pjw') // the testing bot
+    // bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
 } else {
     try {
-        bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw')
+        bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
         // TLS options
         tlsOptions = {
             cert: fs.readFileSync(path.join(__dirname, '../self-server-cert.pem')),
