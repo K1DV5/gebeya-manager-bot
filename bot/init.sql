@@ -70,5 +70,5 @@ DELIMITER ;
 insert into people (username, chat_id) values('K1DV5', '479319265');
 insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1572382800');
 insert into channels (username, admin, license_expiry) values('mygebeyabags', 'K1DV5', '1572382800');
-insert into channel_permissions (channel, person, post, setting) values('mygeb', 'K1DV5', true, 9)
+/* insert into channel_permissions (channel, person, post, setting) values('mygeb', 'K1DV5', true, 9) */
 /* insert into posts (channel, message_id, title) values ('mygeb', 45, 'foo'); */

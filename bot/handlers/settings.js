@@ -79,7 +79,7 @@ const settingSpectficParams = {
         introText: 'Which channel do you want to update permissions of?',
         finalText: async (ctx, channel) => {
             let admins = await ctx.telegram.getChatAdministrators('@' + channel)
-            await ctx.channels.updatePermissions(channel, admins)
+            await ctx.channels.updatePermissions(channel, admins, ctx.botInfo.username)
             return 'The permissions for @' + channel + ' have been updated.'
         }
     }

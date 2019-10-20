@@ -14,7 +14,7 @@ async function handleAdminAdd(ctx) {
                 license_expiry: licenseExpiry.getTime()/1000, // by 1000 to convert to seconds
             })
             let admins = await ctx.telegram.getChatAdministrators('@' + args.c)
-            await ctx.channels.updatePermissions(args.c, admins)
+            await ctx.channels.updatePermissions(args.c, admins, ctx.botInfo.username)
             ctx.reply(`New channel @${args.c} by @${args.u} added, license expiring on ${licenseExpiry.toString()}`)
         } else {
             ctx.reply('Necessary arguments not given: -u, -c, -e, -p')
