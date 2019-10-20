@@ -38,9 +38,9 @@ if (os.hostname() === 'K1DV5') {
         // certificate. Including it for a verified certificate may cause things to break.
         bot.telegram.setWebhook('https://k1dv5.com:8443/tg-gebeya', {
             source: path.join(__dirname, '../self-server-cert.pem')
-        }).then(() => {fs.writeFileSync('success1.txt', 'Webhook set')})
+        })
     } catch(err) {
-        fs.writeFileSync('err.txt', err)
+        fs.writeFileSync('err-webhook-set.txt', err)
     }
 }
 // the data models
@@ -68,8 +68,7 @@ if (os.hostname() === 'K1DV5') {
 } else {
     try {
         bot.startWebhook('/tg-gebeya', tlsOptions, 8443)
-        fs.writeFileSync('success.txt', 'Listening...')
     } catch(err) {
-        fs.writeFileSync('err2.txt', err)
+        fs.writeFileSync('err-webhook-start.txt', err)
     }
 }
