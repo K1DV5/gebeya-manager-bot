@@ -42,8 +42,9 @@ async function router(ctx) {
                 if (command === '/adminadd') {
                     admin.handleAdminAdd(ctx)
                     return 1
-                } else if ('/try') {
+                } else if (command === '/try') {
                     ctx.reply('Works')
+                    return 1
                 }
             }
         }
