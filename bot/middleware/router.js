@@ -40,7 +40,7 @@ async function router(ctx) {
             if (updateSubTypes.includes('text')) {
                 let command = ctx.message.text.split(' ', 1)[0]
                 if (command === '/adminadd') {
-                    admin.handleAdminAdd(ctx)
+                    await admin.handleAdminAdd(ctx)
                     return 1
                 } else if (command === '/try') {
                     ctx.reply('Works')
