@@ -13,7 +13,7 @@ async function handleAdminAdd(ctx) {
                     a.user.username === ctx.botInfo.username &&
                     a.can_post_messages).length
                 if (!botIsAdmin) {
-                    ctx.reply('The bot has not been given necessary access: must be admin with Post messags permission.')
+                    await ctx.reply('The bot has not been given necessary access: must be admin with Post messags permission.')
                     return
                 }
                 await ctx.people.insert({username: args.u})
@@ -26,21 +26,21 @@ async function handleAdminAdd(ctx) {
                 // set permissions for other admins
                 await ctx.channels.updatePermissions(args.c, admins, ctx.botInfo.username)
 
-                ctx.reply(`New channel @${args.c} by @${args.u} added, license expiring on ${licenseExpiry.toString()}`)
+                await ctx.reply(`New channel @${args.c} by @${args.u} added, license expiring on ${licenseExpiry.toString()}`)
             } catch(err) {
                 if (err.code === 400) {
-                    ctx.reply(err.description + '\n\nMaybe the bot is not added to the channel, or the channel doesn\'t exist.')
+                    await ctx.reply(err.description + '\n\nMaybe the bot is not added to the channel, or the channel doesn\'t exist.')
                 } else {
-                    ctx.reply(err.code)
+                    await ctx.reply(err.code)
                 }
                 return
             }
 
         } else {
-            ctx.reply('Necessary arguments not given: -u, -c, -e, -p')
+            await ctx.reply('Necessary arguments not given: -u, -c, -e, -p')
         }
     } else {
-        ctx.reply(ctx.fallbackReply)
+        await ctx.reply(ctx.fallbackReply)
     }
 }
 
