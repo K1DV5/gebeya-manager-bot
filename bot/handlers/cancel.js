@@ -5,9 +5,9 @@ async function handleCancel(ctx) {
     if (convo) {
         let about = convo.split('.', 1)[0]
         ctx.people.clearDraft(username)
-        ctx.reply(about[0].toUpperCase() + about.slice(1) + ' cancelled.')
+        await ctx.reply(about[0].toUpperCase() + about.slice(1) + ' cancelled.')
     } else {
-        ctx.reply('You aren\'t doing anything.')
+        await ctx.reply('You aren\'t doing anything.')
     }
 }
 
