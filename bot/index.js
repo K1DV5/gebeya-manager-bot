@@ -24,7 +24,7 @@ if (os.hostname() === 'K1DV5') {
     const cert = path.join(__dirname, '../self-server-cert.pem')
     const key = path.join(__dirname, '../self-server-key.pem')
     try {
-        bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
+        bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw', {webhookReply: false}) // main bot
         tlsOptions = {
             cert: fs.readFileSync(cert),
             key: fs.readFileSync(key),
@@ -68,6 +68,8 @@ if (os.hostname() === 'K1DV5') {
     bot.launch().then(() => console.log('bot listening...')).catch((err)=>{console.log(err.message)})
 } else {
     try {
+        // set the info
+        bot.context.botInfo = {username: 'GebeyaManagerBot'}
         bot.startWebhook('/tg-gebeya', tlsOptions, 8443)
         fs.writeFileSync('scc-webhook2.txt', 'Webhook started')
     } catch(err) {
