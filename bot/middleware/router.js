@@ -87,7 +87,7 @@ async function router(ctx) {
                     license.handleLicense(ctx)
                     return
                 } else if (command === '/cancel') {
-                    cancel.handleCancel(ctx)
+                    await cancel.handleCancel(ctx)
                     return
                 } else if (!innerCommands.includes(command)) {
                     ctx.reply('The command ' + command + ' is not supported. Look at the /help.')
