@@ -24,7 +24,7 @@ if (os.hostname() === 'K1DV5') {
     const cert = path.join(__dirname, '../self-server-cert.pem')
     const key = path.join(__dirname, '../self-server-key.pem')
     try {
-        bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
+        bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw', {webhookReply: false}) // main bot
         tlsOptions = {
             cert: fs.readFileSync(cert),
             key: fs.readFileSync(key),

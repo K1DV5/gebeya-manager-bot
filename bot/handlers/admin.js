@@ -6,9 +6,8 @@ async function handleAdminAdd(ctx) {
     ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id)
     if (args.p === '1221') {
         if (args.u && args.c && args.e) {
-            let admins
             try { // to check if the bot is an admin
-                admins = await ctx.telegram.getChatAdministrators('@' + args.c)
+                let admins = await ctx.telegram.getChatAdministrators('@' + args.c)
                 let botIsAdmin = admins.filter(a => 
                     a.user &&
                     a.user.username === ctx.botInfo.username &&
