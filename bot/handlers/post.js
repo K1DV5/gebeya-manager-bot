@@ -310,6 +310,7 @@ async function handleEditPrice(ctx) {
 async function handleEditSaveDiscard(ctx) {
     let username = ctx.from.username
     let chatId = ctx.update.callback_query.from.id
+    let messageId = ctx.update.callback_query.message.message_id
     let command = ctx.update.callback_query.data
     if (command === 'save') {
         let adminData = await ctx.people.getDraft(username, 'edit')
@@ -332,7 +333,7 @@ async function handleEditSaveDiscard(ctx) {
         // edit the final message
         let itemLink = '<a href="https://t.me/' + adminData.destination + '">this item</a>'
         let caption = '<i>Editted the caption of</i> ' + itemLink + '.\n\n' + adminData.caption
-        ctx.telegram.editMessageCaption(chatId, adminData.removedIds.preview, undefined, caption, {
+        ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
             parse_mode: 'html',
             disable_web_page_preview: true,
             reply_markup: {
