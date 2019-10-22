@@ -3,21 +3,9 @@ async function handleWelcomeStart(ctx) {
     let username = ctx.from.username
     if (ctx.state.isChannelAdmin) {
         // store the chat id for the username
-        ctx.people.set(username, {chat_id: ctx.chat.id})
         let name = ctx.from.first_name || username
-        ctx.reply('Welcome, ' + name + ', please send\n/post to post a new item. Or you can go to\n/help to know more.', {
-            reply_markup: {
-                keyboard: [[
-                    {text: '/post'},
-                    {text: '/settings'},
-                    {text: '/cancel'}
-                ], [
-                    {text: '/license', request_location: true},
-                    {text: '/help'},
-                ]],
-                resize_keyboard: true,
-                one_time_keyboard: true
-            },
+        await ctx.reply('Welcome, ' + name + ', please send\n/post to post a new item. Or you can go to\n/help to know more.', {
+            reply_markup: ctx.defaultKeyboard
         })
     } else {
         let reply = 'Welcome, please go to one of our channels '

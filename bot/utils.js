@@ -3,11 +3,11 @@ const https = require('https')
 const fs = require('fs')
 const path = require('path')
 
-function makeKeyboardTiles(buttons) {
+function makeKeyboardTiles(buttons, cols=2) {
     let keyboardRows = []
     let keyboardTiles = []
     for (let button of buttons) {
-        if (keyboardTiles.length === 3) {
+        if (keyboardTiles.length === cols) {
             keyboardRows.push(keyboardTiles)
             keyboardTiles = [button]
         } else {

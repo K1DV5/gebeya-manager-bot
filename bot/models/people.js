@@ -4,7 +4,6 @@ class people extends BaseModel {
     constructor() {
         let table = 'people'
         let cols = ['username',
-                    'chat_id',
                     'draft_title',
                     'draft_description',
                     'draft_price',
@@ -25,7 +24,6 @@ class people extends BaseModel {
         let adminData
         if (purpose === undefined) { // general
             let query = `SELECT p.username,
-                                p.chat_id,
                                 p.to_update AS destination,
                                 p.draft_title AS title,
                                 p.draft_description AS description,

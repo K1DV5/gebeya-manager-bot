@@ -71,7 +71,6 @@ async function handlePhotoStagePhotos(ctx) {
     let filePath = path.join(imagesDir, path.basename(fileProps.file_path))
     let url = `https://api.telegram.org/file/bot${ctx.telegram.token}/${fileProps.file_path}`
     await downloadFile(url, filePath)
-    ctx.reply('Received. Send more or /end it.')
 }
 
 async function handlePhotoStageEnd(ctx) {
@@ -92,9 +91,7 @@ async function handlePhotoStageEnd(ctx) {
     let images = await watermarkDir(imagesDir, imagesDir, logoImg)  // watermark every image
     let removedAtPost = [  // messages removed when the draft is posted
         // intro to the watermarked images preview
-        (await ctx.reply('The individual images will look like this...', {
-            reply_markup: {remove_keyboard: true}
-        })).message_id]
+        (await ctx.reply('The individual images will look like this...')).message_id]
     // the watermarked images
     let previewImages = await ctx.replyWithMediaGroup(images.map(img => {
         return { type: 'photo', media: {source: fs.createReadStream(img)} }
@@ -144,15 +141,15 @@ async function handlePostDraft(ctx) {
             inline_keyboard: [[{text: 'Buy', url: startUrl}]]
         })
         // remove the preview messages
+        let chatId = ctx.update.callback_query.from.id
+        let messageId = ctx.update.callback_query.message.message_id
         await Promise.all(adminData.removedIds.map(async id => {
             try {
-                await ctx.telegram.deleteMessage(adminData.chat_id, id)
+                await ctx.telegram.deleteMessage(chatId, id)
             } catch(err) {
                 console.log(err.message)
             }
         }))
-        let chatId = ctx.update.callback_query.from.id
-        let messageId = ctx.update.callback_query.message.message_id
         try {
             await ctx.telegram.deleteMessage(chatId, messageId)
         } catch(err) {
@@ -191,14 +188,14 @@ async function handlePostDraft(ctx) {
 async function handleDiscardDraft(ctx) {
     let username = ctx.from.username
     let adminData = await ctx.people.getDraft(username)
+    let chatId = ctx.update.callback_query.from.id
+    let messageId = ctx.update.callback_query.message.message_id
     if (adminData) {
         // remove the preview messages
         await Promise.all(adminData.removedIds.map(async id => {
-            await ctx.telegram.deleteMessage(adminData.chat_id, id)
+            await ctx.telegram.deleteMessage(chatId, id)
         }))
     }
-    let chatId = ctx.update.callback_query.from.id
-    let messageId = ctx.update.callback_query.message.message_id
     try {
         await ctx.telegram.deleteMessage(chatId, messageId)
     } catch {}

@@ -1,3 +1,4 @@
+/* -{mysql -u k1dv5com_tg_bot k1dv5com_tg_gebeya < %f} */
 /* DATA MODEL FOR THE BOT */
 
 /* escape from the encoding abomination hell */
@@ -8,10 +9,9 @@ DROP TABLE IF EXISTS channel_permissions, posts, channels, people;
 
 /* admins of channels */
 CREATE TABLE people (username VARCHAR(96) PRIMARY KEY,
-                     chat_id VARCHAR(96),
                      draft_title VARCHAR(255),
                      draft_description VARCHAR(3000),
-                     draft_price VARCHAR(255) DEFAULT '[Not given]',
+                     draft_price VARCHAR(255),
                      /* json encoded object of image ids {"collage": *, "watermarked": [*]} */
                      draft_image_ids VARCHAR(3000),
                      to_update VARCHAR(255), /* thing they are manipulating (post, channel) */
@@ -67,8 +67,9 @@ END //
 DELIMITER ;
 /* insert into people (username) values('Ntsuhwork'); */
 /* insert into channels (username, admin, license_expiry) values('mygeb', 'Ntsuhwork', '1572382800'); */
-insert into people (username, chat_id) values('K1DV5', '479319265');
+insert into people (username) values('K1DV5');
 insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1572382800');
 insert into channels (username, admin, license_expiry) values('mygebeyabags', 'K1DV5', '1572382800');
+/* select * from people\G */
 /* insert into channel_permissions (channel, person, post, setting) values('mygeb', 'K1DV5', true, 9) */
 /* insert into posts (channel, message_id, title) values ('mygeb', 45, 'foo'); */
