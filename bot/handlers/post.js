@@ -162,10 +162,29 @@ async function handlePostDraft(ctx) {
             }
         }
         )
+        // send notifications to others
+        let others = await ctx.channels.getPermitted(channel, 'person')
+        let notifs = []
+        for (person of others) {
+            let chatId = await ctx.people.get(person.person, 'chat_id')
+            if (chatId) {
+                let message = await ctx.telegram.sendPhoto(chatId, adminData.images.collage, {
+                    caption: '<i>There is a new post</i> ' + newLink + ' <i>by</i> @' + username + ' <i>on</i> @' + channel + '.\n\n' + adminData.caption
+                })
+                notifs.push({
+                    person: person.person,
+                    channel,
+                    id: message.message_id,
+                    post_id: postId
+                })
+            }
+        }
+        ctx.people.setNotif(notifs)
         // record the post
         ctx.posts.insert({
             channel,
             message_id: postId,
+            author: username,
             title: adminData.title,
             description: adminData.description,
             price: adminData.price,
