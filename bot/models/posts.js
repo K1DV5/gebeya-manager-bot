@@ -35,6 +35,23 @@ class posts extends BaseModel {
     async getUsernames() {
         return await this.sql('SELECT username FROM people')
     }
+
+    setNotif(notifs) {
+        // notifs: [{person: username, channel: username, post: postId, id: message_id}...]
+        let query = 'INSERT INTO notifications (channel, post_id, message_id, person) VALUES '
+        let values = []
+        for (let notif of notifs) {
+            query += '(?,?,?,?),'
+            values.push(notif.person, notif.channel, notif.post, notif.id)
+        }
+        query = query.slice(query.length - 1) + 'ON DUPLICATE KEY UPDATE message_id = VALUES(message_id)'
+        await this.sql(query, values)
+    }
+
+    getNotif(channel, postId) {
+        let query = 'SELECT person, message_id FROM notifications WHERE channel=? AND post_id=?'
+        return await this.sql(query, [channel, postId])
+    }
 }
 
 // let p = new posts()

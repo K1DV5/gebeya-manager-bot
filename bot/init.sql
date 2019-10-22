@@ -44,6 +44,7 @@ CREATE TABLE posts (channel VARCHAR(96),
                     image_ids VARCHAR(3000),
                     post_date VARCHAR(128),
                     sold_date VARCHAR(128),
+                    interested VARCHAR(3000) DEFAULT '[]', /* [{name: '', id: ''},...] - interested customers, max 21 */
                     state VARCHAR(255) DEFAULT 'available',  /* or 'sold' or 'deleted' */
                     PRIMARY KEY (channel, message_id),
                     FOREIGN KEY (channel) REFERENCES channels(username),
@@ -66,7 +67,7 @@ CREATE TABLE notifications (
     person VARCHAR(96),
     channel VARCHAR(96),
     post_id VARCHAR(96),
-    customers VARCHAR(3000),
+    message_id VARCHAR(96),
     PRIMARY KEY (person, channel, post_id),
     FOREIGN KEY (person) REFERENCES people(username),
     FOREIGN KEY (channel, post_id) REFERENCES posts(channel, message_id)

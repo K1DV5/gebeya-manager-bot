@@ -13,6 +13,15 @@ class channels extends BaseModel {
             'description_bullet'
         ]
         super(table, cols)
+        this.permTable = 'channel_permissions'
+        this.permCols = [
+            'person',
+            'channel',
+            'post',
+            'setting',
+            'edit_others',
+            'delete_others',
+        ]
     }
 
     async licenseIsValid(username, asOf) {
@@ -66,6 +75,16 @@ class channels extends BaseModel {
             }
         }
     }
+
+    async getPermitted(channel, cols) { // get people with permissions (admins on telegram)
+        if (Array.isArray(cols)) {
+            columns = cols.filter(col => this.permCols.includes(col)).join(',')
+        } else if (!(typeof cols === 'string' && this.permCols.includes(cols))) {
+            columns = '*'
+        }
+        let withPermissions = await this.sql('SELECT ' + columns + ' FROM ' + this.permTable + ' WHERE channel=?', [channel])
+        return withPermissions
+    }
 }
 
 // let c = new channels()
@@ -75,5 +94,6 @@ class channels extends BaseModel {
 // c.revokePoster('mygeb', 'kid').then(()=>{
 // c.getPosters('mygeb').then(console.log)
 // })
+// c.getPermitted('mygeb').then(console.log)
 
 module.exports = channels
