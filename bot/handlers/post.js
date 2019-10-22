@@ -115,6 +115,7 @@ async function handlePhotoStageEnd(ctx) {
         }
     },
     )
+    removedAtPost.push(postPreview.message_id)
     let imageIds = {
         collage: postPreview.photo.slice(-1)[0].file_id,
         watermarked: previewImages.map(msg => msg.photo.slice(-1)[0].file_id)
@@ -142,7 +143,6 @@ async function handlePostDraft(ctx) {
         })
         // remove the preview messages
         let chatId = ctx.update.callback_query.from.id
-        let messageId = ctx.update.callback_query.message.message_id
         await Promise.all(adminData.removedIds.map(async id => {
             try {
                 await ctx.telegram.deleteMessage(chatId, id)
@@ -150,11 +150,6 @@ async function handlePostDraft(ctx) {
                 console.log(err.message)
             }
         }))
-        try {
-            await ctx.telegram.deleteMessage(chatId, messageId)
-        } catch(err) {
-            console.log(err.message)
-        }
         // reply notice
         let newLink = '<a href="https://t.me/' + newMessageIdDb + '">here</a>'
         let caption = '<i>Done, you can find your new post </i>' + newLink + '<i>, and it looks like this.</i>\n\n' + adminData.caption
@@ -298,7 +293,7 @@ async function handleEditPrice(ctx) {
         }
     })
     let removedIds = adminData.removedIds
-    removedIds.preview = message.message_id
+    removedIds.push(message.message_id)
     ctx.people.set(username, {
         removed_message_ids: JSON.stringify(removedIds), username
     })
@@ -318,7 +313,7 @@ async function handleEditSaveDiscard(ctx) {
             price: adminData.price,
             caption: adminData.caption
         })
-        let deletedMessage = adminData.removedIds.editOrigin
+        let deletedMessage = adminData.removedIds[0]
         ctx.telegram.deleteMessage(chatId, deletedMessage)
         // edit the post
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
@@ -338,7 +333,7 @@ async function handleEditSaveDiscard(ctx) {
             }
         })
     } else {
-        let deletedMessage = JSON.parse(await ctx.people.get(username, 'removed_message_ids')).preview
+        let deletedMessage = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))[0]
         ctx.reply('Editting cancelled.')
         ctx.telegram.deleteMessage(chatId, deletedMessage)
     }
@@ -363,7 +358,7 @@ async function handleEditCaption(ctx) {
         ctx.people.set(username, {
             conversation: 'edit.title',
             to_update: messageIdDb,
-            removed_message_ids: JSON.stringify({editOrigin: messageId}),
+            removed_message_ids: JSON.stringify([messageId]),
             draft_image_ids: images
         })
         let postUrl = 'https://t.me/' + messageIdDb
