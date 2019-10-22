@@ -7,6 +7,7 @@ async function handleWelcomeStart(ctx) {
         await ctx.reply('Welcome, ' + name + ', please send\n/post to post a new item. Or you can go to\n/help to know more.', {
             reply_markup: ctx.defaultKeyboard
         })
+        ctx.people.set(username, {chat_id: ctx.update.message.chat.id})
     } else {
         let reply = 'Welcome, please go to one of our channels '
         let channels = await ctx.channels.getUsernames()

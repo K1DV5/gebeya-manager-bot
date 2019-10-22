@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS notifications, channel_permissions, posts, channels, people
 
 /* admins of channels */
 CREATE TABLE people (username VARCHAR(96) PRIMARY KEY,
+                     chat_id VARCHAR(24),
                      draft_title VARCHAR(255),
                      draft_description VARCHAR(3000),
                      draft_price VARCHAR(255),
@@ -16,7 +17,7 @@ CREATE TABLE people (username VARCHAR(96) PRIMARY KEY,
                      draft_image_ids VARCHAR(3000),
                      to_update VARCHAR(255), /* thing they are manipulating (post, channel) */
                      /* the replied images album and photo message ids, so that they can be removed when posting */
-                     removed_message_ids VARCHAR(255),
+                     removed_message_ids VARCHAR(255), /* json list of message_ids to delete */
                      conversation VARCHAR(255) /* where the person is in the conversation */
 ) ENGINE = INNODB;
 
