@@ -47,15 +47,21 @@ class channels extends BaseModel {
                 await this.sql('INSERT IGNORE INTO people (username) VALUES (?)', [username])
                 let canPost
                 let canChangeSettings
+                let canEditOtherPosts
+                let canDeleteOtherPosts
                 if (admin.status === 'creator') {
                     canPost = true
                     canChangeSettings = true
+                    canEditOtherPosts = true
+                    canDeleteOtherPosts = true
                 } else {
                     canPost = admin.can_post_messages
                     canChangeSettings = admin.can_change_info
+                    canEditOtherPosts = admin.can_edit_messages
+                    canDeleteOtherPosts = admin.can_delete_messages
                 }
-                this.sql('INSERT INTO channel_permissions (channel, person, post, setting) VALUES (?,?,?,?)',
-                    [channel, username, canPost, canChangeSettings]
+                this.sql('INSERT INTO channel_permissions (channel, person, post, setting, edit_others, delete_others) VALUES (?,?,?,?,?,?)',
+                    [channel, username, canPost, canChangeSettings, canEditOtherPosts, canDeleteOtherPosts]
                 )
             }
         }

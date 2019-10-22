@@ -5,7 +5,7 @@
 ALTER DATABASE k1dv5com_tg_gebeya CHARACTER SET = 'utf8mb4' COLLATE ='utf8mb4_unicode_ci';
 SET NAMES utf8mb4;
 
-DROP TABLE IF EXISTS channel_permissions, posts, channels, people;
+DROP TABLE IF EXISTS notifications, channel_permissions, posts, channels, people;
 
 /* admins of channels */
 CREATE TABLE people (username VARCHAR(96) PRIMARY KEY,
@@ -34,6 +34,7 @@ CREATE TABLE channels (username VARCHAR(96) PRIMARY KEY,
 /* posts by the bot, */
 CREATE TABLE posts (channel VARCHAR(96),
                     message_id VARCHAR(96),
+                    author VARCHAR(96),
                     title VARCHAR(255),
                     description VARCHAR(2440),
                     price VARCHAR(255),
@@ -44,18 +45,31 @@ CREATE TABLE posts (channel VARCHAR(96),
                     sold_date VARCHAR(128),
                     state VARCHAR(255) DEFAULT 'available',  /* or 'sold' or 'deleted' */
                     PRIMARY KEY (channel, message_id),
-                    FOREIGN KEY (channel) REFERENCES channels(username)
+                    FOREIGN KEY (channel) REFERENCES channels(username),
+                    FOREIGN KEY (channel) REFERENCES people(username)
 ) ENGINE = INNODB;
 
 CREATE TABLE channel_permissions (
     person VARCHAR(96),
     channel VARCHAR(96),
-    post BOOLEAN,
-    setting BOOLEAN,
+    post BOOLEAN, /* post items */
+    setting BOOLEAN, /* change settings */
+    edit_others BOOLEAN, /* edit posts by other admins */
+    delete_others BOOLEAN, /* delete posts by other admins */
     PRIMARY KEY (person, channel),
     FOREIGN KEY (channel) REFERENCES channels(username),
     FOREIGN KEY (person) REFERENCES people(username)
-);
+) ENGINE = INNODB;
+
+CREATE TABLE notifications (
+    person VARCHAR(96),
+    channel VARCHAR(96),
+    post_id VARCHAR(96),
+    customers VARCHAR(3000),
+    PRIMARY KEY (person, channel, post_id),
+    FOREIGN KEY (person) REFERENCES people(username),
+    FOREIGN KEY (channel, post_id) REFERENCES posts(channel, message_id)
+) ENGINE = INNODB;
 
 /* trigger for setting the default value for the contact text of channels */
 DELIMITER //
