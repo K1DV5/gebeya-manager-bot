@@ -14,7 +14,8 @@ class posts extends BaseModel {
             'state',
             'marked_sold',
             'post_date',
-            'sold_date'
+            'sold_date',
+            'interested'
         ]
         super('posts', cols)
     }
@@ -51,6 +52,11 @@ class posts extends BaseModel {
     getNotif(channel, postId) {
         let query = 'SELECT person, message_id FROM notifications WHERE channel=? AND post_id=?'
         return await this.sql(query, [channel, postId])
+    }
+
+    deleteNotif(channel, postId) {
+        let query = 'DELETE FROM notifications WHERE channel=? AND post_id=?'
+        await this.sql(query, [channel, postId])
     }
 }
 

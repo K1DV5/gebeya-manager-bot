@@ -5,6 +5,7 @@ const {
     rmdirWithFiles,
     makeCollage
 } = require('../utils')
+const {notifyPost, notifyEdit, notifySold} = require('./notify')
 const fs = require('fs')
 const path = require('path')
 
@@ -150,38 +151,8 @@ async function handlePostDraft(ctx) {
                 console.log(err.message)
             }
         }))
-        // reply notice
-        let newLink = '<a href="https://t.me/' + newMessageIdDb + '">here</a>'
-        let caption = '<i>Done, you can find your new post </i>' + newLink + '<i>, and it looks like this.</i>\n\n' + adminData.caption
-        ctx.replyWithPhoto(adminData.images.collage, {
-            caption,
-            parse_mode: 'html', reply_markup: {
-                inline_keyboard: [
-                    [{text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}]
-                ]
-            }
-        }
-        )
-        // send notifications to others
-        let others = await ctx.channels.getPermitted(channel, 'person')
-        let notifs = []
-        for (person of others) {
-            let chatId = await ctx.people.get(person.person, 'chat_id')
-            if (chatId) {
-                let message = await ctx.telegram.sendPhoto(chatId, adminData.images.collage, {
-                    caption: '<i>There is a new post</i> ' + newLink + ' <i>by</i> @' + username + ' <i>on</i> @' + channel + '.\n\n' + adminData.caption
-                })
-                notifs.push({
-                    person: person.person,
-                    channel,
-                    id: message.message_id,
-                    post_id: postId
-                })
-            }
-        }
-        ctx.people.setNotif(notifs)
         // record the post
-        ctx.posts.insert({
+        await ctx.posts.insert({
             channel,
             message_id: postId,
             author: username,
@@ -192,6 +163,17 @@ async function handlePostDraft(ctx) {
             image_ids: JSON.stringify(adminData.images),
             post_date: ctx.update.callback_query.message.date
         })
+        // reply notice
+        let data = {
+            caption: adminData.caption,
+            image: adminData.images.collage,
+            buttons: {
+                edit: {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb},
+                sold: {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
+                delete: {text: 'Delete', callback_data: 'delete:' + newMessageIdDb}
+            }
+        }
+        await notifyPost(ctx, channel, postId, data)
         // clean up the person draft
         ctx.people.clearDraft(username)
     } else {
@@ -321,7 +303,6 @@ async function handleEditPrice(ctx) {
 async function handleEditSaveDiscard(ctx) {
     let username = ctx.from.username
     let chatId = ctx.update.callback_query.from.id
-    let messageId = ctx.update.callback_query.message.message_id
     let command = ctx.update.callback_query.data
     if (command === 'save') {
         let adminData = await ctx.people.getDraft(username, 'edit')
@@ -341,16 +322,16 @@ async function handleEditSaveDiscard(ctx) {
                 inline_keyboard: [[{text: 'Buy', url: startUrl}]]
             }
         })
-        // edit the final message
-        let itemLink = '<a href="https://t.me/' + adminData.destination + '">this item</a>'
-        let caption = '<i>Editted the caption of</i> ' + itemLink + '.\n\n' + adminData.caption
-        ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
-            parse_mode: 'html',
-            disable_web_page_preview: true,
-            reply_markup: {
-                inline_keyboard: [[{text: 'Edit caption', callback_data: 'edit:' + adminData.destination}]]
+        let data = {
+            caption: adminData.caption,
+            image: ctx.update.callback_query.message.photo.slice(-1)[0].file_id,
+            buttons: {
+                edit: {text: 'Edit caption', callback_data: 'edit:' + adminData.destination},
+                sold: {text: 'Mark sold', callback_data: 'sold:' + adminData.destination},
+                delete: {text: 'Delete', callback_data: 'delete:' + adminData.destination}
             }
-        })
+        }
+        await notifyEdit(ctx, channel, postId, data)
     } else {
         let deletedMessage = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))[0]
         ctx.reply('Editting cancelled.')
@@ -406,24 +387,15 @@ async function handleSold(ctx) {
                 state: 'sold',
                 sold_date: ctx.update.callback_query.message.date,
             })
-            // replace the button with undo
-            let userId = captionEntities.filter(e => e.type == 'text_mention')[0].user.id
-            let itemLink = '<a href="' + captionEntities.filter(e => e.type == 'text_link')[0].url + '">this item</a>'
-            let customerLink = `<a href="tg://user?id=${userId}">customer</a>`
-            let text = `<i>You have a</i> ${customerLink} <i>who wants to buy</i> ${itemLink} <i>from</i> @${channel}. <i>They may contact you</i>.\n\n` + post.caption
-            let chatId = ctx.update.callback_query.from.id
-            let adminMessageId = ctx.update.callback_query.message.message_id
-            ctx.telegram.editMessageCaption(chatId, adminMessageId, undefined, text, {
-                parse_mode: 'html',
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            {text: 'Repost', callback_data: 'repost:' + messageIdDb},
-                            {text: 'Delete', callback_data: 'delete:' + messageIdDb}
-                        ]
-                    ]
+            let data = {
+                caption: post.caption,
+                image: post.image_ids,
+                buttons: {
+                    repost: {text: 'Repost', callback_data: 'repost:' + messageIdDb},
+                    delete: {text: 'Delete', callback_data: 'delete:' + messageIdDb}
                 }
-            })
+            }
+            await notifySold(ctx, channel, messageId, data)
         }
     } else {
         ctx.reply('Already marked sold.')
@@ -469,18 +441,16 @@ async function handleRepost(ctx) {
             [{text: 'Buy', url: startUrl}]
         ]
     })
-    let newLink = '<a href="https://t.me/' + newMessageIdDb + '">here</a>'
-    ctx.telegram.editMessageCaption(
-        input.from.id, input.message.message_id,
-        undefined,
-        '<i>New item posted, you can find your new post</i> ' + newLink + '.\n\n' + postData.caption,
-        {
-            disable_web_page_preview: true,
-            parse_mode: 'html',
-            reply_markup: {
-                inline_keyboard: [[{text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}]]
-            }
-        })
+    let data = {
+        caption: postData.caption,
+        image: collageId,
+        buttons: {
+            edit: {text: 'Edit caption', callback_data: 'edit:' + adminData.destination},
+            sold: {text: 'Mark sold', callback_data: 'sold:' + adminData.destination},
+            delete: {text: 'Delete', callback_data: 'delete:' + adminData.destination}
+        }
+    }
+    notifyRepost(ctx, channel, postId, message.message_id, data)
 }
 
 async function handleDeletePost(ctx) {
@@ -493,11 +463,10 @@ async function handleDeletePost(ctx) {
     if (postExists) {
         try {
             ctx.telegram.deleteMessage('@' + channel, postId)
-            let text = 'Post deleted.'
-            ctx.telegram.editMessageCaption(chatId, messageId, undefined, text)
+            notifyDelete(ctx, channel, postId)
         } catch {
             ctx.state.forceSold = true // force make it sold
-            handleSoldToggle(ctx)
+            handleSold(ctx)
             let text = "can't delete message, marked sold. You can delete it manually."
             ctx.telegram.editMessageCaption(chatId, messageId, undefined, text)
         }

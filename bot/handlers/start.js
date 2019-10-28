@@ -37,47 +37,26 @@ async function handleStart(ctx) {
     let [channel, postId] = messageIdDb.split('/')
     let message = await ctx.posts.get({channel, message_id: postId})
     if (message) {
-        // send messages to both parties.
-        let itemText = 'this item'
-        let itemLink = `<a href="https://t.me/${messageIdDb}">${itemText}</a>`
-        let adminUsername = await ctx.posts.getAdmin(channel, postId)
-        let adminChatId = await ctx.people.get(adminUsername, 'chat_id')
-
-        // to the customer
-        let postData = await ctx.posts.get({channel, message_id: postId}, ['caption', 'image_ids'])
-        let contactText = await ctx.channels.get(channel, 'contact_text')
-        let caption = '<i>You have selected</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n' + postData.caption + '\n\n' + contactText
-        let collage = JSON.parse(postData.image_ids).collage
-        ctx.replyWithPhoto(collage, {
-            caption,
-            disable_web_page_preview: true,
-            parse_mode: 'html',
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: 'Details', callback_data: 'details:' + messageIdDb },
-                        { text: 'Contact seller', url: 'https://t.me/' + adminUsername }
-                    ]
-                ]
+        // add to the interested list
+        let name = ctx.from.first_name || ctx.from.username || 'Anonymous'
+        let customer = {name, id: ctx.from.id}
+        let previous = JSON.parse(await ctx.posts.get({channel, message_id: postId}, 'interested'))
+        let newList = JSON.stringify([...previous, customer])
+        await ctx.posts.set({channel, message_id: postId}, {interested: newList})
+        let data = {
+            caption: postData.caption,
+            customers: previous,
+            customer,
+            image: collage,
+            buttons: {
+                details: { text: 'Details', callback_data: 'details:' + messageIdDb },
+                contact: { text: 'Contact seller', url: 'https://t.me/' + adminUsername },
+                edit: {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb},
+                sold: {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
+                delete: {text: 'Delete', callback_data: 'delete:' + newMessageIdDb}
             }
-        })
-
-        // to the person (seller)
-        let customerLink = `<a href="tg://user?id=${userId}">customer</a>`
-        caption = `<i>You have a</i> ${customerLink} <i>who wants to buy</i> ${itemLink} <i>from</i> @${channel}. <i>They may contact you</i>.\n\n` + postData.caption
-        ctx.telegram.sendPhoto(adminChatId, collage, {
-            caption,
-            parse_mode: 'html',
-            disable_web_page_preview: true,
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: 'Mark sold', callback_data: 'sold:' + messageIdDb },
-                        { text: 'Delete', callback_data: 'delete:' + messageIdDb }
-                    ]
-                ]
-            }
-        })
+        }
+        await notifyBuy(ctx, channel, postId, data)
     } else {
         ctx.reply('No message with that id was found.')
     }
