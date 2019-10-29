@@ -32,7 +32,6 @@ if (os.hostname() === 'K1DV5') {
 
         // Set telegram webhook
         bot.telegram.setWebhook('https://k1dv5.com:8443/tg-gebeya', { source: cert })
-            .then(fs.writeFileSync('scc-webhook1.txt', 'Webhook set'))
     } catch(err) {
         fs.writeFileSync('err-webhook-set.txt', err)
     }
@@ -92,7 +91,6 @@ if (os.hostname() === 'K1DV5') {
         // set the info
         bot.context.botInfo = {username: 'GebeyaManagerBot'}
         bot.startWebhook('/tg-gebeya', tlsOptions, 8443)
-        fs.writeFileSync('scc-webhook2.txt', 'Webhook started')
     } catch(err) {
         fs.writeFileSync('err-webhook-start.txt', err)
     }
