@@ -1,3 +1,51 @@
+function makeKeyboard(permissions, buttons) {
+    if (permissions === 'all') {
+        return {reply_markup: {
+            inline_keyboard: [[...buttons.edit, ...buttons.delete]]
+        }}
+    }
+    let keyboard = []
+    if (buttons) {
+        // buttons classification by permissions is for this
+        if (permissions.edit_others) {
+            keyboard.push(...buttons.edit)
+        }
+        if (permissions.delete_others) {
+            keyboard.push(...buttons.delete)
+        }
+    }
+    keyboard = keyboard.length ? {reply_markup: {inline_keyboard: [keyboard]}} : {}
+    return keyboard
+}
+
+async function sendToMany(ctx, persons, buttons, imageId, caption) {
+    // persons: [{username, edit_others, delete_others}, ...]
+    let notifs = []
+    await Promise.all(persons.map(async person => {
+        let chatId = await ctx.people.get(person.person, 'chat_id')
+        if (chatId) {
+            let message = await ctx.telegram.sendPhoto(chatId, imageId, {
+                caption,
+                ...makeKeyboard(person, buttons)
+            })
+            notifs.push({ person: person.person, channel, id: message.message_id, post_id: postId })
+        }
+    }))
+    return notifs
+}
+
+async function clearPrevious(ctx, channel, postId, excludeId) {
+    let previous = await ctx.posts.getNotif(channel, postId)
+    for (let prev of previous.filter(p => p.message_id != excludeId)) {
+        try { // delete the previous one
+            let old = prev.message_id
+            ctx.telegram.deleteMessage(chatId, old)
+        } catch (err) {
+            console.log(err.code, err.message, err.description)
+        }
+    }
+}
+
 async function notifyPost(ctx, channel, postId, data) { // send post notifications
     let author = ctx.from.username
     // to the author
@@ -9,31 +57,15 @@ async function notifyPost(ctx, channel, postId, data) { // send post notificatio
             inline_keyboard: [[data.buttons.edit, data.buttons.sold, data.buttons.delete]]
         }
     })
-    let notifs = [{person: author, channel, id: message.message_id, post_id: postId}]
     // to the others
     let others = await ctx.channels.getPermitted(channel)
     others = others.filter(person => person.person !== author) // make sure the author is not included
     // if author is not admin, notify them as well
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (channelAdmin !== author) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    await Promise.all(others.map(async person => {
-        let chatId = await ctx.people.get(person.person, 'chat_id')
-        if (chatId) {
-            let keyboard = []
-            if (person.edit_others) {
-                keyboard.push(data.buttons.edit, data.buttons.sold)
-            }
-            if (person.delete_others) {
-                keyboard.push(data.buttons.delete)
-            }
-            keyboard = keyboard.length ? {inline_keyboard: [keyboard]} : undefined
-            let message = await ctx.telegram.sendPhoto(chatId, data.image, {
-                caption: '<i>There is a new post</i> ' + newLink + ' <i>by</i> @' + author + ' <i>on</i> @' + channel + '.\n\n' + data.caption,
-                reply_markup: keyboard
-            })
-            notifs.push({ person: person.person, channel, id: message.message_id, post_id: postId })
-        }
-    }))
+    let caption = '<i>There is a new post</i> ' + newLink + ' <i>by</i> @' + author + ' <i>on</i> @' + channel + '.\n\n' + data.caption
+    let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    notifs.push({person: author, channel, id: message.message_id, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
 
@@ -50,55 +82,29 @@ async function notifyEdit(ctx, channel, postId, data) {
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     let caption = '<i>You editted the caption of</i> ' + itemLink + '.\n\n' + data.caption + interestedText
-    let keyboard = []
+    let keyboard
     if (author === editor) {
-        keyboard = [data.buttons.edit, data.buttons.sold, data.buttons.delete]
+        keyboard = makeKeyboard('all', data.buttons)
     } else {
         let permissions = permitted.filter(p => p.person === editor)[0]
-        if (permissions.edit_others) {
-            keyboard.push(data.buttons.edit, data.buttons.sold)
-        }
-        if (permissions.delete_others) {
-            keyboard.push(data.buttons.delete)
-        }
+        keyboard = makeKeyboard(permissions, data.buttons)
     }
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
         parse_mode: 'html',
         disable_web_page_preview: true,
-        reply_markup: {
-            inline_keyboard: [keyboard]
-        }
+        ...keyboard
     })
-    let notifs = [{person: editor, channel, id: messageId, post_id: postId}]
     // to the others
     let others = permitted.filter(person => ![editor, author].includes(person.person)) // make sure the editor and author are not included
     if (editor !== author) others.push({person: author, edit_others: true, delete_others: true})
     // if editor is not admin, notify them as well
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    let previous = await ctx.posts.getNotif(channel, postId)
-    await Promise.all(others.map(async person => {
-        let chatId = await ctx.people.get(person.person, 'chat_id')
-        if (chatId) {
-            try { // delete the previous one
-                let old = previous.filter(m => m.person === person.person)[0].message_id
-                ctx.telegram.deleteMessage(chatId, old)
-            } catch {}
-            let keyboard = []
-            if (person.edit_others) {
-                keyboard.push(data.buttons.edit, data.buttons.sold)
-            }
-            if (person.delete_others) {
-                keyboard.push(data.buttons.delete)
-            }
-            keyboard = keyboard.length ? {inline_keyboard: [keyboard]} : undefined
-            let message = await ctx.telegram.sendPhoto(chatId, data.image, {
-                caption: '@' + editor + ' <i>editted the caption of</i> ' + newLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText,
-                reply_markup: keyboard
-            })
-            notifs.push({ person: person.person, channel, id: message.message_id, post_id: postId })
-        }
-    }))
+    // clear the previous notifs of the others
+    await clearPrevious(ctx, channel, postId, messageId)
+    let caption = '@' + editor + ' <i>editted the caption of</i> ' + newLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
+    let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
 
@@ -112,26 +118,18 @@ async function notifySold(ctx, channel, postId, data) {
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     let caption = '<i>You marked</i> ' + itemLink + ' <b>sold</b>.\n\n<s>' + data.caption + '</s>
-    let keyboard = []
+    let keyboard
     if (author === editor) {
-        keyboard = [data.buttons.repost, data.buttons.delete]
+        keyboard = makeKeyboard('all', data.buttons)
     } else {
         let permissions = permitted.filter(p => p.person === editor)[0]
-        if (permissions.edit_others) {
-            keyboard.push(data.buttons.repost)
-        }
-        if (permissions.delete_others) {
-            keyboard.push(data.buttons.delete)
-        }
+        keyboard = makeKeyboard(permissions, data.buttons)
     }
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
         parse_mode: 'html',
         disable_web_page_preview: true,
-        reply_markup: {
-            inline_keyboard: [keyboard]
-        }
+        ...keyboard
     })
-    let notifs = [{person: editor, channel, id: messageId, post_id: postId}]
     // to the others
     let others = permitted.filter(person => ![editor, author].includes(person.person)) // make sure the editor and author are not included
     if (editor !== author) others.push({person: author, edit_others: true, delete_others: true})
@@ -139,28 +137,10 @@ async function notifySold(ctx, channel, postId, data) {
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     let previous = await ctx.posts.getNotif(channel, postId)
-    await Promise.all(others.map(async person => {
-        let chatId = await ctx.people.get(person.person, 'chat_id')
-        if (chatId) {
-            try { // delete the previous one
-                let old = previous.filter(m => m.person === person.person)[0].message_id
-                ctx.telegram.deleteMessage(chatId, old)
-            } catch {}
-            let keyboard = []
-            if (person.edit_others) {
-                keyboard.push(data.buttons.repost)
-            }
-            if (person.delete_others) {
-                keyboard.push(data.buttons.delete)
-            }
-            keyboard = keyboard.length ? {inline_keyboard: [keyboard]} : undefined
-            let message = await ctx.telegram.sendPhoto(chatId, data.image, {
-                caption: '@' + editor + ' <i> marked </i> ' + newLink + ' <i>sold on</i> @' + channel + '.\n\n<s>' + data.caption + '</s>',
-                reply_markup: keyboard
-            })
-            notifs.push({ person: person.person, channel, id: message.message_id, post_id: postId })
-        }
-    }))
+    await clearPrevious(ctx, channel, postId, messageId)
+    let caption = '@' + editor + ' <i> marked </i> ' + newLink + ' <i>sold on</i> @' + channel + '.\n\n<s>' + data.caption + '</s>',
+    let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 
 }
@@ -175,55 +155,28 @@ async function notifyRepost(ctx, channel, oldId, newId, data) {
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     let caption = '<i>You reposted</i> ' + itemLink + '.\n\n' + data.caption
-    let keyboard = []
+    let keyboard
     if (author === editor) {
-        keyboard = [data.buttons.edit, data.buttons.sold, data.buttons.delete]
+        keyboard = makeKeyboard('all', data.buttons)
     } else {
         let permissions = permitted.filter(p => p.person === editor)[0]
-        if (permissions.edit_others) {
-            keyboard.push(data.buttons.edit, data.buttons.sold)
-        }
-        if (permissions.delete_others) {
-            keyboard.push(data.buttons.delete)
-        }
+        keyboard = makeKeyboard(permissions, data.buttons)
     }
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
         parse_mode: 'html',
         disable_web_page_preview: true,
-        reply_markup: {
-            inline_keyboard: [keyboard]
-        }
+        ...keyboard
     })
-    let notifs = [{person: editor, channel, id: messageId, post_id: newId}]
     // to the others
     let others = permitted.filter(person => ![editor, author].includes(person.person)) // make sure the editor and author are not included
     if (editor !== author) others.push({person: author, edit_others: true, delete_others: true})
     // if editor is not admin, notify them as well
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    let previous = await ctx.posts.getNotif(channel, oldId)
-    await Promise.all(others.map(async person => {
-        let chatId = await ctx.people.get(person.person, 'chat_id')
-        if (chatId) {
-            try { // delete the previous one
-                let old = previous.filter(m => m.person === person.person)[0].message_id
-                ctx.telegram.deleteMessage(chatId, old)
-            } catch {}
-            let keyboard = []
-            if (person.edit_others) {
-                keyboard.push(data.buttons.edit, data.buttons.sold)
-            }
-            if (person.delete_others) {
-                keyboard.push(data.buttons.delete)
-            }
-            keyboard = keyboard.length ? {inline_keyboard: [keyboard]} : undefined
-            let message = await ctx.telegram.sendPhoto(chatId, data.image, {
-                caption: '@' + editor + ' <i>reposted</i> ' + newLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption,
-                reply_markup: keyboard
-            })
-            notifs.push({ person: person.person, channel, id: message.message_id, post_id: newId })
-        }
-    }))
+    await clearPrevious(ctx, channel, postId, messageId)
+    let caption = '@' + editor + ' <i>reposted</i> ' + newLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
+    let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    notifs.push({person: editor, channel, id: messageId, post_id: newId})
     await ctx.posts.setNotif(notifs)
 }
 
@@ -241,25 +194,14 @@ async function notifyDelete(ctx, channel, postId) {
         parse_mode: 'html',
         disable_web_page_preview: true,
     })
-    let notifs = [{person: editor, channel, id: messageId, post_id: postId}]
     // to the others
     let others = permitted.filter(person => person.person !== editor) // make sure the editor is not included
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    let previous = await ctx.posts.getNotif(channel, postId)
-    await Promise.all(others.map(async person => {
-        let chatId = await ctx.people.get(person.person, 'chat_id')
-        if (chatId) {
-            try { // delete the previous one
-                let old = previous.filter(m => m.person === person.person)[0].message_id
-                ctx.telegram.deleteMessage(chatId, old)
-            } catch {}
-            let message = await ctx.telegram.sendPhoto(chatId, data.image, {
-                caption: '@' + editor + ' <i>deleted</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n<s>' + data.caption + '</s>'
-            })
-            notifs.push({ person: person.person, channel, id: message.message_id, post_id: postId })
-        }
-    }))
+    await clearPrevious(ctx, channel, postId, messageId)
+    let caption = '@' + editor + ' <i>deleted</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n<s>' + data.caption + '</s>'
+    let notifs = await sendToMany(ctx, others, undefined, data.image, caption)
+    notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
 
@@ -280,9 +222,7 @@ async function notifyBuy(ctx, channel, postId, data) {
         data.caption,
         disable_web_page_preview: true,
         parse_mode: 'html',
-        reply_markup: {
-            inline_keyboard: [[data.buttons.details, data.buttons.contact]]
-        }
+        reply_markup: { inline_keyboard: [data.buttons.customer] }
     })
     // to stakeholders
     let others = permitted.filter(person => person.person !== postData.author) // make sure the editor and author are not included
@@ -290,28 +230,17 @@ async function notifyBuy(ctx, channel, postId, data) {
     // if editor is not admin, notify them as well
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (channelAdmin !== postData.author) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    let previous = await ctx.posts.getNotif(channel, postId)
-    await Promise.all(others.map(async person => {
-        let chatId = await ctx.people.get(person.person, 'chat_id')
-        if (chatId) {
-            try { // delete the previous one
-                let old = previous.filter(m => m.person === person.person)[0].message_id
-                ctx.telegram.deleteMessage(chatId, old)
-            } catch {}
-            let keyboard = []
-            if (person.edit_others) {
-                keyboard.push(data.buttons.edit, data.buttons.sold)
-            }
-            if (person.delete_others) {
-                keyboard.push(data.buttons.delete)
-            }
-            keyboard = keyboard.length ? {inline_keyboard: [keyboard]} : undefined
-            let message = await ctx.telegram.sendPhoto(chatId, data.image, {
-                caption: '<i>You have a new customer for</i> ' + newLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText,
-                reply_markup: keyboard
-            })
-            notifs.push({ person: person.person, channel, id: message.message_id, post_id: postId })
-        }
-    }))
+    await clearPrevious(ctx, channel, postId) // no exclude
+    let caption = '<i>You have a new customer for</i> ' + newLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
+    let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
     await ctx.posts.setNotif(notifs)
+}
+
+module.exports = {
+    notifyPost,
+    notifyEdit,
+    notifySold,
+    notifyRepost,
+    notifyDelete,
+    notifyBuy
 }

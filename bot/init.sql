@@ -1,4 +1,4 @@
-/* -{mysql -u k1dv5com_tg_bot k1dv5com_tg_gebeya < %f} */
+/* -{mysql -u root k1dv5com_tg_gebeya < %f} */
 /* DATA MODEL FOR THE BOT */
 
 /* escape from the encoding abomination hell */

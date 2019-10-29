@@ -5,7 +5,7 @@ const {
     rmdirWithFiles,
     makeCollage
 } = require('../utils')
-const {notifyPost, notifyEdit, notifySold} = require('./notify')
+const {notifyPost, notifyEdit, notifySold, notifyRepost, notifyDelete} = require('./notify')
 const fs = require('fs')
 const path = require('path')
 
@@ -168,9 +168,12 @@ async function handlePostDraft(ctx) {
             caption: adminData.caption,
             image: adminData.images.collage,
             buttons: {
-                edit: {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb},
-                sold: {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
-                delete: {text: 'Delete', callback_data: 'delete:' + newMessageIdDb}
+                // classified on permissions basis
+                edit: [
+                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}
+                    {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
+                ],
+                delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}]
             }
         }
         await notifyPost(ctx, channel, postId, data)
@@ -326,9 +329,12 @@ async function handleEditSaveDiscard(ctx) {
             caption: adminData.caption,
             image: ctx.update.callback_query.message.photo.slice(-1)[0].file_id,
             buttons: {
-                edit: {text: 'Edit caption', callback_data: 'edit:' + adminData.destination},
-                sold: {text: 'Mark sold', callback_data: 'sold:' + adminData.destination},
-                delete: {text: 'Delete', callback_data: 'delete:' + adminData.destination}
+                // classified on permissions basis
+                edit: [
+                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}
+                    {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
+                ],
+                delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}]
             }
         }
         await notifyEdit(ctx, channel, postId, data)
@@ -391,8 +397,9 @@ async function handleSold(ctx) {
                 caption: post.caption,
                 image: post.image_ids,
                 buttons: {
-                    repost: {text: 'Repost', callback_data: 'repost:' + messageIdDb},
-                    delete: {text: 'Delete', callback_data: 'delete:' + messageIdDb}
+                    // classified on permissions basis
+                    edit: [{text: 'Repost', callback_data: 'repost:' + messageIdDb}],
+                    delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}]
                 }
             }
             await notifySold(ctx, channel, messageId, data)
@@ -445,9 +452,12 @@ async function handleRepost(ctx) {
         caption: postData.caption,
         image: collageId,
         buttons: {
-            edit: {text: 'Edit caption', callback_data: 'edit:' + adminData.destination},
-            sold: {text: 'Mark sold', callback_data: 'sold:' + adminData.destination},
-            delete: {text: 'Delete', callback_data: 'delete:' + adminData.destination}
+            // classified on permissions basis
+            edit: [
+                {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}
+                {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
+            ],
+            delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}]
         }
     }
     notifyRepost(ctx, channel, postId, message.message_id, data)

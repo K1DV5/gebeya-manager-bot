@@ -1,3 +1,4 @@
+const {notifyBuy} = require('./notify')
 
 async function handleWelcomeStart(ctx) {
     let username = ctx.from.username
@@ -49,11 +50,16 @@ async function handleStart(ctx) {
             customer,
             image: collage,
             buttons: {
-                details: { text: 'Details', callback_data: 'details:' + messageIdDb },
-                contact: { text: 'Contact seller', url: 'https://t.me/' + adminUsername },
-                edit: {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb},
-                sold: {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
-                delete: {text: 'Delete', callback_data: 'delete:' + newMessageIdDb}
+                // classified on permissions basis
+                edit: [
+                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}
+                    {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
+                ],
+                delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}],
+                customer: [
+                    { text: 'Details', callback_data: 'details:' + messageIdDb },
+                    { text: 'Contact seller', url: 'https://t.me/' + adminUsername },
+                ]
             }
         }
         await notifyBuy(ctx, channel, postId, data)
