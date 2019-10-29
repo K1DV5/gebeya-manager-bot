@@ -155,7 +155,7 @@ async function handlePostDraft(ctx) {
         let chatId = ctx.update.callback_query.from.id
         await Promise.all(adminData.removedIds.map(async id => {
             try {
-                // await ctx.telegram.deleteMessage(chatId, id)
+                await ctx.telegram.deleteMessage(chatId, id)
             } catch(err) {
                 console.log(err.message)
             }
@@ -187,7 +187,7 @@ async function handlePostDraft(ctx) {
         }
         await notifyPost(ctx, channel, postId, data)
         // clean up the person draft
-        // ctx.people.clearDraft(username)
+        ctx.people.clearDraft(username)
     } else {
         ctx.reply('Sorry, your draft has been cleared. Start a new one with /post.')
     }
@@ -334,6 +334,7 @@ async function handleEditSaveDiscard(ctx) {
                 inline_keyboard: [[{text: 'Buy', url: startUrl}]]
             }
         })
+        let newMessageIdDb = channel + '/' + postId
         let data = {
             caption: adminData.caption,
             image: ctx.update.callback_query.message.photo.slice(-1)[0].file_id,

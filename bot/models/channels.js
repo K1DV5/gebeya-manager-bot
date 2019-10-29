@@ -77,6 +77,7 @@ class channels extends BaseModel {
     }
 
     async getPermitted(channel, cols) { // get people with permissions (admins on telegram)
+        let columns
         if (Array.isArray(cols)) {
             columns = cols.filter(col => this.permCols.includes(col)).join(',')
         } else if (!(typeof cols === 'string' && this.permCols.includes(cols))) {

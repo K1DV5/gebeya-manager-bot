@@ -55,8 +55,6 @@ async function notifyPost(ctx, channel, postId, data) { // send post notificatio
     let message = await ctx.replyWithPhoto(data.image, {caption,
         parse_mode: 'html', ...makeKeyboard('all', data.buttons)
     })
-    console.log(message.message_id)
-    return
     // to the others
     let others = await ctx.channels.getPermitted(channel)
     others = others.filter(person => person.person !== author) // make sure the author is not included
@@ -87,6 +85,7 @@ async function notifyEdit(ctx, channel, postId, data) {
         keyboard = makeKeyboard('all', data.buttons)
     } else {
         let permissions = permitted.filter(p => p.person === editor)[0]
+        console.log(author, editor)
         keyboard = makeKeyboard(permissions, data.buttons)
     }
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
@@ -102,7 +101,7 @@ async function notifyEdit(ctx, channel, postId, data) {
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     // clear the previous notifs of the others
     await clearPrevious(ctx, channel, postId, messageId)
-    caption = '@' + editor + ' <i>editted the caption of</i> ' + newLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
+    caption = '@' + editor + ' <i>editted the caption of</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
     let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
     notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)

@@ -5,6 +5,7 @@ class posts extends BaseModel {
         let cols = [
             'message_id',
             'channel',
+            'author',
             'title',
             'description',
             'price',

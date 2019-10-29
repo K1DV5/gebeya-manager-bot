@@ -68,7 +68,25 @@ bot.context.defaultKeyboard = {
 bot.use(router)
 
 if (os.hostname() === 'K1DV5') {
-    bot.launch().then(() => console.log('bot listening...')).catch((err)=>{console.log(err.message)})
+    let tried = 0
+    let trials = 10
+    function retry(err) {
+        if (!err || ['ECONNREFUSED', 'ETIMEDOUT'].includes(err.code) && tried < trials) {
+            bot.launch().then(() => console.log('bot listening...')).catch((err)=>{
+                if (['ECONNREFUSED', 'ETIMEDOUT'].includes(err.code)) {
+                    console.log(err.code, 'retrying...')
+                    retry()
+                    tried++
+                } else {
+                    console.log(err.code, err.message)
+                }
+            })
+        } else {
+            console.log(err.code, err.message)
+        }
+    }
+    bot.catch(retry)
+    retry()
 } else {
     try {
         // set the info

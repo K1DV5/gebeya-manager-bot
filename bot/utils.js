@@ -56,15 +56,43 @@ function downloadFile(url, filePath) {
         await fs.promises.mkdir(path.dirname(filePath), {recursive: true})
         let fileStream = fs.createWriteStream(filePath)
         fileStream.on('finish', () => {fileStream.close(); resolve(filePath)})
-        fileStream.on('error', (err) => {fs.promises.unlink(filePath); reject(err)})
-
-        https.get(url, response => {
-            if (response.statusCode === 200) {
-                response.pipe(fileStream)
-            } else {
-                reject(response.statusCode)
+        fileStream.on('error', (err) => {
+            try {
+                fs.promises.unlink(filePath)
+            } catch (err) {
+                if (err.code !== 'ENOENT') {
+                    reject(err)
+                }
             }
-        }).on('error', (err) => {fs.promises.unlink(filePath); reject(err)})
+            })
+
+        // failed retry logic
+        let tried = 0
+        let retries = 10
+        let handler = async (err) => {
+            fileStream.close()
+            try {
+                await fs.promises.unlink(filePath)
+            } catch (err) {if (err.code !== 'ENOENT') {reject(err); return}}
+            if (err.code === 'ECONNREFUSED' && tried < retries) {
+                console.log('Download failed, retrying...')
+                retry()
+                tried++
+            } else {
+                reject(err)
+            }
+        }
+        fileStream.on('error', handler)
+        let retry = async () => {
+            https.get(url, response => {
+                if (response.statusCode === 200) {
+                    response.pipe(fileStream)
+                } else {
+                    reject(response.statusCode)
+                }
+            }).on('error', handler)
+        }
+        retry()
     })
 }
 
