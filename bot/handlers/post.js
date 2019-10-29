@@ -78,6 +78,17 @@ async function handlePhotoStageEnd(ctx) {
     let username = ctx.from.username
     let channel = await ctx.people.get(username, 'to_update')
     let logoImg = path.join(ctx.imagesDir, username, 'logo-' + channel + '.png')
+    let draftCollage = path.join(ctx.imagesDir, username, 'draft-collage.jpg')
+    let imagesDir = path.join(ctx.imagesDir, username, 'draft-images')
+    try { // make sure there is at least one photo
+        let photos = await fs.promises.readdir(imagesDir) // dir might not exist
+        let stat = await fs.promises.stat(path.join(imagesDir, photos[0] || '0')) // no file may exist
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            ctx.reply('You have not sent any photos. Please send some and then /end, or /cancel the post.')
+            return
+        }
+    }
     try {
         await fs.promises.stat(logoImg) // check if it exists
     } catch (err) {
@@ -86,8 +97,6 @@ async function handlePhotoStageEnd(ctx) {
             ctx.reply("You don't have your logo here, the images will not be watermarked. To watermark your images with your logo, go to /settings and 'Logo'.")
         }
     }
-    let draftCollage = path.join(ctx.imagesDir, username, 'draft-collage.jpg')
-    let imagesDir = path.join(ctx.imagesDir, username, 'draft-images')
     await makeCollage(imagesDir, draftCollage, logoImg)  // make a collage and watermark it
     let images = await watermarkDir(imagesDir, imagesDir, logoImg)  // watermark every image
     let removedAtPost = [  // messages removed when the draft is posted
@@ -146,7 +155,7 @@ async function handlePostDraft(ctx) {
         let chatId = ctx.update.callback_query.from.id
         await Promise.all(adminData.removedIds.map(async id => {
             try {
-                await ctx.telegram.deleteMessage(chatId, id)
+                // await ctx.telegram.deleteMessage(chatId, id)
             } catch(err) {
                 console.log(err.message)
             }
@@ -170,7 +179,7 @@ async function handlePostDraft(ctx) {
             buttons: {
                 // classified on permissions basis
                 edit: [
-                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}
+                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb},
                     {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
                 ],
                 delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}]
@@ -178,7 +187,7 @@ async function handlePostDraft(ctx) {
         }
         await notifyPost(ctx, channel, postId, data)
         // clean up the person draft
-        ctx.people.clearDraft(username)
+        // ctx.people.clearDraft(username)
     } else {
         ctx.reply('Sorry, your draft has been cleared. Start a new one with /post.')
     }
@@ -331,7 +340,7 @@ async function handleEditSaveDiscard(ctx) {
             buttons: {
                 // classified on permissions basis
                 edit: [
-                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}
+                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb},
                     {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
                 ],
                 delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}]
@@ -454,7 +463,7 @@ async function handleRepost(ctx) {
         buttons: {
             // classified on permissions basis
             edit: [
-                {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}
+                {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb},
                 {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
             ],
             delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}]

@@ -37,7 +37,7 @@ class posts extends BaseModel {
         return await this.sql('SELECT username FROM people')
     }
 
-    setNotif(notifs) {
+    async setNotif(notifs) {
         // notifs: [{person: username, channel: username, post: postId, id: message_id}...]
         let query = 'INSERT INTO notifications (channel, post_id, message_id, person) VALUES '
         let values = []
@@ -49,12 +49,12 @@ class posts extends BaseModel {
         await this.sql(query, values)
     }
 
-    getNotif(channel, postId) {
+    async getNotif(channel, postId) {
         let query = 'SELECT person, message_id FROM notifications WHERE channel=? AND post_id=?'
         return await this.sql(query, [channel, postId])
     }
 
-    deleteNotif(channel, postId) {
+    async deleteNotif(channel, postId) {
         let query = 'DELETE FROM notifications WHERE channel=? AND post_id=?'
         await this.sql(query, [channel, postId])
     }

@@ -48,7 +48,7 @@ CREATE TABLE posts (channel VARCHAR(96),
                     state VARCHAR(255) DEFAULT 'available',  /* or 'sold' or 'deleted' */
                     PRIMARY KEY (channel, message_id),
                     FOREIGN KEY (channel) REFERENCES channels(username),
-                    FOREIGN KEY (channel) REFERENCES people(username)
+                    FOREIGN KEY (author) REFERENCES people(username)
 ) ENGINE = INNODB;
 
 CREATE TABLE channel_permissions (

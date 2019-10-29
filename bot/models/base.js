@@ -5,7 +5,7 @@ let connection
 if (os.hostname() === 'K1DV5') {
     connection = mysql.createConnection({
         host: 'localhost',
-        user: 'k1dv5com_tg_bot',
+        user: 'root',
         database: 'k1dv5com_tg_gebeya'
     })
 } else {

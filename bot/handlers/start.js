@@ -52,7 +52,7 @@ async function handleStart(ctx) {
             buttons: {
                 // classified on permissions basis
                 edit: [
-                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb}
+                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb},
                     {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
                 ],
                 delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}],
