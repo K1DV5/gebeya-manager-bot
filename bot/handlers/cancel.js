@@ -6,7 +6,7 @@ async function handleCancel(ctx) {
     if (convo) {
         let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
         let chatId = ctx.update.message.chat.id
-        if (removed.length) {
+        if (removed !== null && removed.length) {
             await Promise.all(removed.map(async id => {
                 await deleteMessage(ctx, chatId, id)
             }))
