@@ -1,3 +1,4 @@
+const {deleteMessage} = require('./notify')
 
 async function handleCancel(ctx) {
     let username = ctx.from.username
@@ -7,11 +8,7 @@ async function handleCancel(ctx) {
         let chatId = ctx.update.message.chat.id
         if (removed.length) {
             await Promise.all(removed.map(async id => {
-                try {
-                    await ctx.telegram.deleteMessage(chatId, id)
-                } catch(err) {
-                    console.log(err.message)
-                }
+                await deleteMessage(ctx, chatId, id)
             }))
         }
         let about = convo.split('.', 1)[0]

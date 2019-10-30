@@ -10,14 +10,14 @@ test routes
     - [X] post  
     - [X] discard  
 
-- [ ] buy after post
-    - [ ] :admin 
-        - [ ] mark sold
-        - [ ] delete
-        - [X] edit
+- [X] buy after post
     - [X] :customer 
         - [X] details 
         - [X] contact seller 
+    - [X] :admin 
+        - [X] edit
+        - [X] mark sold
+        - [X] delete
 
 - [X] edit 
     - [X] title 
@@ -26,26 +26,26 @@ test routes
     - [X] save 
     - [X] discard 
 
-- [ ] buy after edit 
-    - [ ] :admin 
-        - [ ] edit
-        - [ ] mark sold
-        - [ ] delete
-    - [ ] :customer 
-        - [ ] details 
-        - [ ] contact seller 
+- [X] buy after edit 
+    - [X] :customer 
+        - [X] details 
+        - [X] contact seller 
+    - [X] :admin 
+        - [X] edit
+        - [X] delete
+        - [X] mark sold
 
-- [ ] mark sold
-  - [ ] repost
-  - [ ] delete
+- [X] mark sold
+  - [X] repost
+  - [X] delete
 
-- [ ] /settings 
-    - [ ] logo 
-    - [ ] caption templ 
-    - [ ] sold templ 
-    - [ ] contact text 
-    - [ ] desc bullet 
-    - [ ] permissions 
+- [X] /settings 
+    - [X] logo 
+    - [X] caption templ 
+    - [X] sold templ 
+    - [X] contact text 
+    - [X] desc bullet 
+    - [X] permissions 
 
 - [X] /license
 - [X] /help

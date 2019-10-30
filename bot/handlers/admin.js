@@ -1,9 +1,10 @@
 const {argparse} = require('../utils')
+const {deleteMessage} = require('./notify')
 
 async function handleAdminAdd(ctx) {
     let text = ctx.message.text
     let args = argparse(text)
-    ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id)
+    deleteMessage(ctx, ctx.chat.id, ctx.message.message_id)
     if (args.p === '1221') {
         if (args.u && args.c && args.e) {
             try { // to check if the bot is an admin

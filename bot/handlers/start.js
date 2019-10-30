@@ -40,7 +40,7 @@ async function handleStart(ctx) {
     if (postData) {
         // add to the interested list
         let previousCust = JSON.parse(postData.interested)
-        let name = ctx.from.first_name || ctx.from.username || 'Anonymous'
+        let name = ctx.from.first_name || ctx.from.username || '[Anonymous]'
         let custId = ctx.from.id
         let customer = {name, id: custId}
         let newList = JSON.stringify([...previousCust.filter(cst => cst.id != custId), customer])

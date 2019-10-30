@@ -1,4 +1,32 @@
+async function deleteMessage(ctx, chatId, messageId) {
+    // try to delete it and if failed, edit it to convey deletion
+    let success
+    try {
+        await ctx.telegram.deleteMessage(chatId, messageId)
+        success = true
+    } catch (err) {
+        success = false
+        if (err.code == 400) {
+            try {
+                await ctx.telegram.editMessageCaption(chatId, messageId, undefined, '[deleted]')
+            } catch (err) {
+                if (err.code == 400) {
+                    await ctx.telegram.editMessageCaption(chatId, messageId, undefined, '[deleted]')
+                } else {
+                    console.log(err.code, err.message)
+                }
+            }
+        } else {
+            console.log(err.code, err.message)
+        }
+    }
+    return success
+}
+
 function makeKeyboard(permissions, buttons) {
+    // make sure all are iterable
+    buttons.edit = buttons.edit || []
+    buttons.delete = buttons.delete || []
     if (permissions === 'all') {
         return {reply_markup: {
             inline_keyboard: [[...buttons.edit, ...buttons.delete]]
@@ -39,12 +67,8 @@ async function clearPrevious(ctx, channel, postId, excludeId) {
     let previous = await ctx.posts.getNotif(channel, postId)
     for (let prev of previous.filter(p => p.message_id != excludeId)) {
         let chatId = await ctx.people.get(prev.person, 'chat_id')
-        try { // delete the previous one
-            let old = prev.message_id
-            if (old) await ctx.telegram.deleteMessage(chatId, old)
-        } catch (err) {
-            console.log(err.code, err.message, err.description)
-        }
+        // delete the previous one
+        await deleteMessage(ctx, chatId, prev.message_id)
     }
 }
 
@@ -90,7 +114,6 @@ async function notifyEdit(ctx, channel, postId, data) {
         keyboard = makeKeyboard('all', data.buttons)
     } else {
         let permissions = permitted.filter(p => p.person === editor)[0]
-        console.log(author, editor)
         keyboard = makeKeyboard(permissions, data.buttons)
     }
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
@@ -124,7 +147,7 @@ async function notifySold(ctx, channel, postId, data) {
     // edit the editor message
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
-    let caption = '<i>You marked</i> ' + itemLink + ' <b>sold</b>.\n\n<s>' + data.caption + '</s>'
+    let caption = '<i>You marked</i> ' + itemLink + ' <b>sold</b>.\n\n' + data.caption
     let keyboard
     if (author === editor) {
         keyboard = makeKeyboard('all', data.buttons)
@@ -145,7 +168,7 @@ async function notifySold(ctx, channel, postId, data) {
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     let previous = await ctx.posts.getNotif(channel, postId)
     await clearPrevious(ctx, channel, postId, messageId)
-    caption = '@' + editor + ' <i> marked </i> ' + itemLink + ' <i>sold on</i> @' + channel + '.\n\n<s>' + data.caption + '</s>'
+    caption = '@' + editor + ' <i> marked </i> ' + itemLink + ' <i>sold on</i> @' + channel + '.\n\n' + data.caption
     let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
     let notifs = others
         .filter(o => messageIds[o.person])
@@ -183,37 +206,43 @@ async function notifyRepost(ctx, channel, oldId, newId, data) {
     // if editor is not admin, notify them as well
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    await clearPrevious(ctx, channel, postId, messageId)
-    caption = '@' + editor + ' <i>reposted</i> ' + newLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
+    await clearPrevious(ctx, channel, oldId, messageId)
+    caption = '@' + editor + ' <i>reposted</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
     let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
     let notifs = others
         .filter(o => messageIds[o.person])
-        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
+        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: newId}})
     notifs.push({person: editor, channel, id: messageId, post_id: newId})
     await ctx.posts.setNotif(notifs)
 }
 
-async function notifyDelete(ctx, channel, postId) {
+async function notifyDelete(ctx, channel, postId, data) {
     let editor = ctx.from.username
     let permitted = await ctx.channels.getPermitted(channel)
     let addr = channel + '/' + postId
-    let itemLink = '<a href="https://t.me/' + addr + '">this item</a>'
     // edit the editor message
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
-    let postCaption = await ctx.posts.get({channel, message_id: postId}, 'caption')
-    let caption = '<i>You deleted</i> ' + itemLink + '.\n\n<s>' + postCaption + '</s>'
+    let caption = data.text + '\n\n' + data.caption
+    let keyboard
+    if (data.author === editor) {
+        keyboard = makeKeyboard('all', data.buttons)
+    } else {
+        let permissions = permitted.filter(p => p.person === editor)[0]
+        keyboard = makeKeyboard(permissions, data.buttons)
+    }
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
         parse_mode: 'html',
         disable_web_page_preview: true,
+        ...keyboard
     })
     // to the others
     let others = permitted.filter(person => person.person !== editor) // make sure the editor is not included
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     await clearPrevious(ctx, channel, postId, messageId)
-    caption = '@' + editor + ' <i>deleted</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n<s>' + data.caption + '</s>'
-    let messageIds = await sendToMany(ctx, others, undefined, data.image, caption)
+    caption = data.text + '\n<i>by</i> ' + '@' + editor + ' <i>from</i> @' + channel
+    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
     let notifs = others
         .filter(o => messageIds[o.person])
         .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
@@ -260,5 +289,6 @@ module.exports = {
     notifySold,
     notifyRepost,
     notifyDelete,
-    notifyBuy
+    notifyBuy,
+    deleteMessage
 }

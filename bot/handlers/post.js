@@ -5,7 +5,14 @@ const {
     rmdirWithFiles,
     makeCollage
 } = require('../utils')
-const {notifyPost, notifyEdit, notifySold, notifyRepost, notifyDelete} = require('./notify')
+const {
+    notifyPost,
+    notifyEdit,
+    notifySold,
+    notifyRepost,
+    notifyDelete,
+    deleteMessage
+} = require('./notify')
 const fs = require('fs')
 const path = require('path')
 
@@ -44,7 +51,7 @@ function handleTitleStage(ctx) {
     let username = ctx.from.username
     let title = ctx.message.text
     ctx.people.set(username, {draft_title: title, conversation: 'post.description'})
-    ctx.reply('Write the description. You can make bulleted lists easily by beginning new lines with . (dot) and it will be replaced with a real bullet character. You can also change the character in /settings => "Description bullet".')
+    ctx.reply('Write the description (bullet lists as well).')
 }
 
 function handleDescriptionStage(ctx) {
@@ -154,11 +161,7 @@ async function handlePostDraft(ctx) {
         // remove the preview messages
         let chatId = ctx.update.callback_query.from.id
         await Promise.all(adminData.removedIds.map(async id => {
-            try {
-                await ctx.telegram.deleteMessage(chatId, id)
-            } catch(err) {
-                console.log(err.message)
-            }
+            await deleteMessage(ctx, chatId, id)
         }))
         // record the post
         await ctx.posts.insert({
@@ -201,12 +204,10 @@ async function handleDiscardDraft(ctx) {
     if (adminData) {
         // remove the preview messages
         await Promise.all(adminData.removedIds.map(async id => {
-            await ctx.telegram.deleteMessage(chatId, id)
+            await deleteMessage(ctx, chatId, id)
         }))
     }
-    try {
-        await ctx.telegram.deleteMessage(chatId, messageId)
-    } catch {}
+    await deleteMessage(ctx, chatId, messageId)
     // clean up the person draft
     ctx.people.clearDraft(username)
     ctx.reply('Draft discarded.')
@@ -349,7 +350,7 @@ async function handleEditSaveDiscard(ctx) {
     } else {
         let deletedMessage = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))[0]
         ctx.reply('Editting cancelled.')
-        ctx.telegram.deleteMessage(chatId, deletedMessage)
+        deleteMessage(ctx, chatId, deletedMessage)
     }
     ctx.people.clearDraft(username)
 }
@@ -402,7 +403,7 @@ async function handleSold(ctx) {
                 sold_date: ctx.update.callback_query.message.date,
             })
             let data = {
-                caption: post.caption,
+                caption: soldText,
                 image: post.image_ids,
                 buttons: {
                     // classified on permissions basis
@@ -420,8 +421,7 @@ async function handleSold(ctx) {
 async function handleRepost(ctx) {
     let input = ctx.update.callback_query
     let [channel, postId] = input.data.split('/')
-    let postData = await ctx.posts.get({channel, message_id: postId},
-        ['title', 'description', 'price', 'caption', 'image_ids'])
+    let postData = await ctx.posts.get({channel, message_id: postId})
     if (!postData) {
         ctx.reply('Sorry, not found')
         return
@@ -431,19 +431,19 @@ async function handleRepost(ctx) {
         ctx.reply('Your license for this channel has expired. Contact @' + ctx.admins + ' for renewal.')
         return
     }
-    try { // remove the current one
-        ctx.telegram.deleteMessage('@' + channel, postId)
-    } catch(err) {
-        console.log(err.message)
+    if (postData.state !== 'deleted') {
+        // remove the current one
+        deleteMessage(ctx, '@' + channel, postId)
+        // also in db
+        ctx.posts.set({channel, message_id: postId}, {state: 'deleted'})
     }
-    // also in db
-    ctx.posts.set({channel, message_id: postId}, {state: 'deleted'})
     let collageId = JSON.parse(postData.image_ids).collage
     let message = await ctx.telegram.sendPhoto('@' + channel, collageId, {caption: postData.caption})
     let newMessageIdDb = channel + '/' + message.message_id
     ctx.posts.insert({
         channel,
         message_id: message.message_id,
+        author: ctx.from.username,
         title: postData.title,
         description: postData.description,
         price: postData.price,
@@ -477,17 +477,31 @@ async function handleDeletePost(ctx) {
     let [channel, postId] = postAddress.split('/')
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
-    let postExists = await ctx.posts.exists({channel, message_id: postId})
-    if (postExists) {
+    let postData = await ctx.posts.get({channel, message_id: postId}, ['author', 'caption', 'image_ids'])
+    if (postData) { // means post exists
+        let postAddr = channel + '/' + postId
+        let text
         try {
-            ctx.telegram.deleteMessage('@' + channel, postId)
-            notifyDelete(ctx, channel, postId)
+            await ctx.telegram.deleteMessage('@' + channel, postId)
+            text = '--- ITEM DELETED ---'
         } catch {
             ctx.state.forceSold = true // force make it sold
-            handleSold(ctx)
-            let text = "can't delete message, marked sold. You can delete it manually."
-            ctx.telegram.editMessageCaption(chatId, messageId, undefined, text)
+            await handleSold(ctx)
+            let itemLink = `<a href="https://t.me/${postAddr}">ITEM</a>`
+            text = '----\n' + itemLink + ' MARKED SOLD\ncould not be deleted\ncan be deleted manually\n----'
         }
+        let collage = JSON.parse(postData.image_ids).collage
+        let data = {
+            caption: postData.caption,
+            author: postData.author,
+            text,
+            image: collage,
+            buttons: {
+                // classified on permissions basis
+                edit: [ {text: 'Repost', callback_data: 'repost:' + postAddr}, ]
+            }
+        }
+        notifyDelete(ctx, channel, postId, data)
         ctx.posts.set({channel, message_id: postId}, {state: 'deleted'})
     } else {
         let text = '[deleted] Post not found, may have been alreary deleted'
