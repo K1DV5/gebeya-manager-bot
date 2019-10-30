@@ -1,0 +1,47 @@
+test routes
+
+- [X] /post  
+    - [X] channel  
+    - [X] title  
+    - [X] description  
+    - [X] price  
+    - [X] photo  
+    - [X] /end  
+    - [X] post  
+    - [X] discard  
+
+- [ ] buy after post
+    - [ ] :admin 
+        - [ ] mark sold 
+        - [ ] repost 
+        - [ ] delete
+    - [ ] :customer 
+        - [ ] details 
+        - [ ] contact seller 
+
+- [ ] edit 
+    - [ ] title 
+    - [ ] description 
+    - [ ] price 
+    - [ ] save 
+    - [ ] discard 
+
+- [ ] buy after edit 
+    - [ ] :admin 
+        - [ ] mark sold 
+        - [ ] repost 
+        - [ ] delete
+    - [ ] :customer 
+        - [ ] details 
+        - [ ] contact seller 
+
+- [ ] /settings 
+    - [ ] logo 
+    - [ ] caption templ 
+    - [ ] sold templ 
+    - [ ] contact text 
+    - [ ] desc bullet 
+    - [ ] permissions 
+
+- [ ] /license
+- [ ] /help
