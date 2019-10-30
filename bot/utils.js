@@ -165,7 +165,7 @@ async function watermarkDir(sourceDir, destDir, watermarkImg) {
     return filePaths
 }
 
-async function makeCollage(sources, dest, watermarkImg = undefined, width = 72) {
+async function makeCollage(sources, dest, watermarkImg = undefined, width = 720) {
     if (typeof sources === 'string') {  // a username was passed, read every file in that folder
         sources = (await fs.promises.readdir(sources)).map(file => path.join(sources, file))
     }
