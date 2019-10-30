@@ -325,8 +325,6 @@ async function handleEditSaveDiscard(ctx) {
             price: adminData.price,
             caption: adminData.caption
         })
-        let deletedMessage = adminData.removedIds[0]
-        ctx.telegram.deleteMessage(chatId, deletedMessage)
         // edit the post
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
         ctx.telegram.editMessageCaption('@' + channel, postId, undefined, adminData.caption, {
@@ -409,7 +407,7 @@ async function handleSold(ctx) {
                 buttons: {
                     // classified on permissions basis
                     edit: [{text: 'Repost', callback_data: 'repost:' + messageIdDb}],
-                    delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}]
+                    delete: [{text: 'Delete', callback_data: 'delete:' + messageIdDb}]
                 }
             }
             await notifySold(ctx, channel, messageId, data)

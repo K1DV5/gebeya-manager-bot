@@ -36,29 +36,31 @@ async function handleStart(ctx) {
     let userId = ctx.update.message.from.id
     let messageIdDb = ctx.state.payload.replace('-', '/')
     let [channel, postId] = messageIdDb.split('/')
-    let message = await ctx.posts.get({channel, message_id: postId})
-    if (message) {
+    let postData = await ctx.posts.get({channel, message_id: postId})
+    if (postData) {
         // add to the interested list
+        let previousCust = JSON.parse(postData.interested)
         let name = ctx.from.first_name || ctx.from.username || 'Anonymous'
-        let customer = {name, id: ctx.from.id}
-        let previous = JSON.parse(await ctx.posts.get({channel, message_id: postId}, 'interested'))
-        let newList = JSON.stringify([...previous, customer])
+        let custId = ctx.from.id
+        let customer = {name, id: custId}
+        let newList = JSON.stringify([...previousCust.filter(cst => cst.id != custId), customer])
         await ctx.posts.set({channel, message_id: postId}, {interested: newList})
         let data = {
             caption: postData.caption,
-            customers: previous,
+            image: JSON.parse(postData.image_ids).collage,
+            customers: previousCust,
+            author: postData.author,
             customer,
-            image: collage,
             buttons: {
                 // classified on permissions basis
                 edit: [
-                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb},
-                    {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
+                    {text: 'Edit caption', callback_data: 'edit:' + messageIdDb},
+                    {text: 'Mark sold', callback_data: 'sold:' + messageIdDb},
                 ],
-                delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}],
+                delete: [{text: 'Delete', callback_data: 'delete:' + messageIdDb}],
                 customer: [
                     { text: 'Details', callback_data: 'details:' + messageIdDb },
-                    { text: 'Contact seller', url: 'https://t.me/' + adminUsername },
+                    { text: 'Contact seller', url: 'https://t.me/' + postData.author },
                 ]
             }
         }

@@ -18,28 +18,30 @@ function makeKeyboard(permissions, buttons) {
     return keyboard
 }
 
-async function sendToMany(ctx, persons, buttons, imageId, caption) {
-    // persons: [{username, edit_others, delete_others}, ...]
-    let notifs = []
-    await Promise.all(persons.map(async person => {
-        let chatId = await ctx.people.get(person.person, 'chat_id')
+async function sendToMany(ctx, permissions, buttons, imageId, caption) {
+    // permissions: [{username, edit_others, delete_others}, ...]
+    let messageIds = {}
+    await Promise.all(permissions.map(async perm => {
+        let chatId = await ctx.people.get(perm.person, 'chat_id')
         if (chatId) {
             let message = await ctx.telegram.sendPhoto(chatId, imageId, {
                 caption,
-                ...makeKeyboard(person, buttons)
+                parse_mode: 'html',
+                ...makeKeyboard(perm, buttons)
             })
-            notifs.push({ person: person.person, channel, id: message.message_id, post_id: postId })
+            messageIds[perm.person] = message.message_id
         }
     }))
-    return notifs
+    return messageIds
 }
 
 async function clearPrevious(ctx, channel, postId, excludeId) {
     let previous = await ctx.posts.getNotif(channel, postId)
     for (let prev of previous.filter(p => p.message_id != excludeId)) {
+        let chatId = await ctx.people.get(prev.person, 'chat_id')
         try { // delete the previous one
             let old = prev.message_id
-            ctx.telegram.deleteMessage(chatId, old)
+            if (old) await ctx.telegram.deleteMessage(chatId, old)
         } catch (err) {
             console.log(err.code, err.message, err.description)
         }
@@ -62,7 +64,10 @@ async function notifyPost(ctx, channel, postId, data) { // send post notificatio
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (channelAdmin !== author) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     caption = '<i>There is a new post</i> ' + newLink + ' <i>by</i> @' + author + ' <i>on</i> @' + channel + '.\n\n' + data.caption
-    let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    let notifs = others
+        .filter(o => messageIds[o.person])
+        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
     notifs.push({person: author, channel, id: message.message_id, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
@@ -102,7 +107,10 @@ async function notifyEdit(ctx, channel, postId, data) {
     // clear the previous notifs of the others
     await clearPrevious(ctx, channel, postId, messageId)
     caption = '@' + editor + ' <i>editted the caption of</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
-    let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    let notifs = others
+        .filter(o => messageIds[o.person])
+        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
     notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
@@ -137,8 +145,11 @@ async function notifySold(ctx, channel, postId, data) {
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     let previous = await ctx.posts.getNotif(channel, postId)
     await clearPrevious(ctx, channel, postId, messageId)
-    caption = '@' + editor + ' <i> marked </i> ' + newLink + ' <i>sold on</i> @' + channel + '.\n\n<s>' + data.caption + '</s>'
-    let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    caption = '@' + editor + ' <i> marked </i> ' + itemLink + ' <i>sold on</i> @' + channel + '.\n\n<s>' + data.caption + '</s>'
+    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    let notifs = others
+        .filter(o => messageIds[o.person])
+        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
     notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 
@@ -174,7 +185,10 @@ async function notifyRepost(ctx, channel, oldId, newId, data) {
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     await clearPrevious(ctx, channel, postId, messageId)
     caption = '@' + editor + ' <i>reposted</i> ' + newLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
-    let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    let notifs = others
+        .filter(o => messageIds[o.person])
+        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
     notifs.push({person: editor, channel, id: messageId, post_id: newId})
     await ctx.posts.setNotif(notifs)
 }
@@ -199,7 +213,10 @@ async function notifyDelete(ctx, channel, postId) {
     if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     await clearPrevious(ctx, channel, postId, messageId)
     caption = '@' + editor + ' <i>deleted</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n<s>' + data.caption + '</s>'
-    let notifs = await sendToMany(ctx, others, undefined, data.image, caption)
+    let messageIds = await sendToMany(ctx, others, undefined, data.image, caption)
+    let notifs = others
+        .filter(o => messageIds[o.person])
+        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
     notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
@@ -207,31 +224,33 @@ async function notifyDelete(ctx, channel, postId) {
 async function notifyBuy(ctx, channel, postId, data) {
     // send messages to both parties.
     let itemLink = `<a href="https://t.me/${channel + '/' + postId}">this item</a>`
-    let postData = await ctx.posts.get({channel, message_id: postId}, ['caption', 'image_ids', 'author'])
-    let collage = JSON.parse(postData.image_ids).collage
-    let authorChat = await ctx.people.get(postData.author, 'chat_id')
+    let authorChat = await ctx.people.get(data.author, 'chat_id')
 
     data.customers.push({name: data.customer.name + ' (NEW!)', id: data.customer.id})
     let interestedText = '\n\nInterested customers are:\n' + data.customers.map(cust => '\u2022 <a href="tg://user?id=' + cust.id + '">' + cust.name + '</a>').join('\n')
     // to the customer
     let contactText = await ctx.channels.get(channel, 'contact_text')
-    let caption = '<i>You have selected</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n' + postData.caption + '\n\n' + contactText
+    let caption = '<i>You have selected</i> ' + itemLink + ' <i>from</i> @' + channel + '.\n\n' + data.caption + '\n\n' + contactText
     // to the customer
     ctx.replyWithPhoto(data.image, {
-        caption: data.caption,
+        caption,
         disable_web_page_preview: true,
         parse_mode: 'html',
         reply_markup: { inline_keyboard: [data.buttons.customer] }
     })
     // to stakeholders
-    let others = permitted.filter(person => person.person !== postData.author) // make sure the editor and author are not included
-    others.push({person: postData.author, edit_others: true, delete_others: true})
+    let permitted = await ctx.channels.getPermitted(channel)
+    let others = permitted.filter(person => person.person !== data.author) // make sure the editor and author are not included
+    others.push({person: data.author, edit_others: true, delete_others: true})
     // if editor is not admin, notify them as well
     let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (channelAdmin !== postData.author) others.push({person: channelAdmin, edit_others: true, delete_others: true})
+    if (channelAdmin !== data.author) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     await clearPrevious(ctx, channel, postId) // no exclude
-    caption = '<i>You have a new customer for</i> ' + newLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
-    let notifs = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    caption = '<i>You have a new customer for</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
+    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
+    let notifs = others
+        .filter(o => messageIds[o.person])
+        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
     await ctx.posts.setNotif(notifs)
 }
 

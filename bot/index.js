@@ -77,11 +77,11 @@ if (os.hostname() === 'K1DV5') {
                     retry()
                     tried++
                 } else {
-                    console.log(err.code, err.message)
+                    throw err
                 }
             })
         } else {
-            console.log(err.code, err.message)
+            throw err
         }
     }
     bot.catch(retry)

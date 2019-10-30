@@ -12,28 +12,32 @@ test routes
 
 - [ ] buy after post
     - [ ] :admin 
-        - [ ] mark sold 
-        - [ ] repost 
+        - [ ] mark sold
         - [ ] delete
-    - [ ] :customer 
-        - [ ] details 
-        - [ ] contact seller 
+        - [X] edit
+    - [X] :customer 
+        - [X] details 
+        - [X] contact seller 
 
-- [ ] edit 
-    - [ ] title 
-    - [ ] description 
-    - [ ] price 
-    - [ ] save 
-    - [ ] discard 
+- [X] edit 
+    - [X] title 
+    - [X] description 
+    - [X] price 
+    - [X] save 
+    - [X] discard 
 
 - [ ] buy after edit 
     - [ ] :admin 
-        - [ ] mark sold 
-        - [ ] repost 
+        - [ ] edit
+        - [ ] mark sold
         - [ ] delete
     - [ ] :customer 
         - [ ] details 
         - [ ] contact seller 
+
+- [ ] mark sold
+  - [ ] repost
+  - [ ] delete
 
 - [ ] /settings 
     - [ ] logo 
@@ -43,5 +47,5 @@ test routes
     - [ ] desc bullet 
     - [ ] permissions 
 
-- [ ] /license
-- [ ] /help
+- [X] /license
+- [X] /help

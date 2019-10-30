@@ -4,6 +4,7 @@ class people extends BaseModel {
     constructor() {
         let table = 'people'
         let cols = ['username',
+                    'chat_id',
                     'draft_title',
                     'draft_description',
                     'draft_price',
