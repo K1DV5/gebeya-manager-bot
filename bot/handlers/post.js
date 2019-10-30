@@ -25,14 +25,21 @@ async function handlePost(ctx) {
         return
     }
     if (channels.length === 1) {
-        ctx.people.set(username, {to_update: channels[0], conversation: 'post.title'})
-        ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
+        let message = await ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
+        ctx.people.set(username, {
+            to_update: channels[0],
+            conversation: 'post.title',
+            removed_message_ids: `${message.messageId}`
+        })
     } else {
         let keyboard = makeKeyboardTiles(channels.map(ch => {return {text: '@' + ch, callback_data: 'post_channel:' + ch}}))
-        ctx.reply('Which channel do you want to post to?', {
+        let message = await ctx.reply('Which channel do you want to post to?', {
             reply_markup: {
                 inline_keyboard: keyboard,
             }
+        })
+        ctx.people.set(username, {
+            removed_message_ids: `${message.messageId}`
         })
     }
 }
@@ -47,25 +54,31 @@ async function handleChannelStage(ctx) {
     ctx.telegram.editMessageText(chatId, messageId, undefined, text)
 }
 
-function handleTitleStage(ctx) {
+async function handleTitleStage(ctx) {
     let username = ctx.from.username
     let title = ctx.message.text
-    ctx.people.set(username, {draft_title: title, conversation: 'post.description'})
-    ctx.reply('Write the description (bullet lists as well).')
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
+    let message = await ctx.reply('Write the description (bullet lists as well).')
+    let newRemoved = JSON.stringify([...removed, message.message_id])
+    ctx.people.set(username, {draft_title: title, conversation: 'post.description', removed_message_ids: newRemoved})
 }
 
-function handleDescriptionStage(ctx) {
+async function handleDescriptionStage(ctx) {
     let username = ctx.from.username
     let description = ctx.message.text
-    ctx.people.set(username, {draft_description: description, conversation: 'post.price'})
-    ctx.reply('And the price? How much is it?')
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
+    let message = await ctx.reply('And the price? How much is it?')
+    let newRemoved = JSON.stringify([...removed, message.message_id])
+    ctx.people.set(username, {draft_description: description, conversation: 'post.price', removed_message_ids: newRemoved})
 }
 
-function handlePriceStage(ctx) {
+await function handlePriceStage(ctx) {
     let username = ctx.from.username
     let price = ctx.message.text
-    ctx.people.set(username, {draft_price: price, conversation: 'post.photo'})
-    ctx.reply('Send some photos and finally send the command /end when you\'re done.')
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
+    let message = await ctx.reply('Send some photos and finally send the command /end when you\'re done.')
+    let newRemoved = JSON.stringify([...removed, message.message_id])
+    ctx.people.set(username, {draft_price: price, conversation: 'post.photo', removed_message_ids: newRemoved})
     // clear the images dir for the new photos
     let imagesDir = path.join(ctx.imagesDir, username, 'draft-images')
     rmdirWithFiles(imagesDir)

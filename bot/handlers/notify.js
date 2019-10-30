@@ -13,11 +13,11 @@ async function deleteMessage(ctx, chatId, messageId) {
                 if (err.code == 400) {
                     await ctx.telegram.editMessageCaption(chatId, messageId, undefined, '[deleted]')
                 } else {
-                    console.log(err.code, err.message)
+                    console.log('edit error:', err.code, err.message)
                 }
             }
         } else {
-            console.log(err.code, err.message)
+            console.log('delete error:', err.code, err.message)
         }
     }
     return success
