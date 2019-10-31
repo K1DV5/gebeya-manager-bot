@@ -93,9 +93,7 @@ if (os.hostname() === 'K1DV5') {
     try {
         // set the info
         bot.context.botInfo = {username: 'GebeyaManagerBot'}
-        bot.startWebhook(process.env.BOT_PATH, tlsOptions, 8443).then(() => {
-            fs.writeFileSync('err-webhook-start.txt', err)
-        })
+        bot.startWebhook(process.env.BOT_PATH, tlsOptions, 8443)
         // require('https')
         // .createServer(tlsOptions, bot.webhookCallback(process.env.BOT_PATH))
         // .listen(8443)
