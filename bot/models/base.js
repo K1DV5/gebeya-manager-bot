@@ -10,10 +10,10 @@ if (os.hostname() === 'K1DV5') {
     })
 } else {
     connection = mysql.createConnection({
-        host: 'cpanel.k1dv5.com',
-        user: 'k1dv5com_tg_bot',
+        host: 'localhost',
+        user: 'gebeyama_gebeya',
         password: process.env.DB_PASS,
-        database: 'k1dv5com_tg_gebeya'
+        database: 'gebeyama_gebeya'
     })
 }
 
