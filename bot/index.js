@@ -1,11 +1,19 @@
 
+var http = require('http');
+var server = http.createServer(function(req, res) {
+    res.writeHead(200, {'Content-Type': 'text/plain'});
+    var message = 'It works!\n',
+        version = 'NodeJS ' + process.versions.node + '\n',
+        response = [message, version].join('\n');
+    res.end(response);
+});
+server.listen();
+
 // -{node --inspect %f}
 const os = require('os')
 const path = require('path')
 const Telegraf = require('telegraf')
 const fs = require('fs')
-
-var http = require('http');
 
 // the router
 const router = require('./middleware/router')
@@ -97,9 +105,3 @@ if (os.hostname() === 'K1DV5') {
         fs.writeFileSync('err-webhook-start.txt', err)
     }
 }
-
-//create a server object:
-http.createServer(function (req, res) {
-  res.write('Hello World!'); //write a response to the client
-  res.end(); //end the response
-}).listen(8080); //the server object listens on port 8080
