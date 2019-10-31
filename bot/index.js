@@ -17,6 +17,7 @@ const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
 
 let bot
 let tlsOptions
+let botPath = '/gebeya-manager-path' // the secret path
 if (os.hostname() === 'K1DV5') {
     bot = new Telegraf('959496597:AAEWFvI1oYv58RLrrckR_c1cW-4-tPZ1Pjw') // the testing bot
     // bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
@@ -31,7 +32,7 @@ if (os.hostname() === 'K1DV5') {
         }
 
         // Set telegram webhook
-        bot.telegram.setWebhook('https://k1dv5.com:8443/tg-gebeya', { source: cert })
+        bot.telegram.setWebhook('https://k1dv5.com:8443' + botPath, { source: cert })
     } catch(err) {
         fs.writeFileSync('err-webhook-set.txt', err)
     }
@@ -91,9 +92,12 @@ if (os.hostname() === 'K1DV5') {
     try {
         // set the info
         bot.context.botInfo = {username: 'GebeyaManagerBot'}
-        bot.startWebhook('/tg-gebeya', tlsOptions, 8443).then(() => {
+        bot.startWebhook(botPath, tlsOptions, 8443).then(() => {
             fs.writeFileSync('err-webhook-start.txt', err)
         })
+        // require('https')
+        // .createServer(tlsOptions, bot.webhookCallback(botPath))
+        // .listen(8443)
     } catch(err) {
         fs.writeFileSync('err-webhook-start.txt', err)
     }
