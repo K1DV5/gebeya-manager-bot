@@ -33,7 +33,7 @@ if (os.hostname() === 'K1DV5') {
         }
 
         // Set telegram webhook
-        bot.telegram.setWebhook('https://k1dv5.com:8443' + process.env.BOT_PATH, { source: cert })
+        bot.telegram.setWebhook('https://gebeya-manager.com:8443' + process.env.BOT_PATH, { source: cert })
     } catch(err) {
         fs.writeFileSync('err-webhook-set.txt', err)
     }
