@@ -1,6 +1,6 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/k1dv5com/tg-gebeya/
+    - export DEPLOYPATH=/home/k1dv5com/gebeya-manager-bot/
     - /bin/cp -R bot $DEPLOYPATH
     - /bin/cp package.json $DEPLOYPATH
