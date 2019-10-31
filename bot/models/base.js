@@ -12,7 +12,7 @@ if (os.hostname() === 'K1DV5') {
     connection = mysql.createConnection({
         host: 'cpanel.k1dv5.com',
         user: 'k1dv5com_tg_bot',
-        password: 'tg_bot_pass',
+        password: process.env.DB_PASS,
         database: 'k1dv5com_tg_gebeya'
     })
 }

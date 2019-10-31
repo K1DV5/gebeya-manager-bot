@@ -4,6 +4,8 @@ const os = require('os')
 const path = require('path')
 const Telegraf = require('telegraf')
 const fs = require('fs')
+// for the tokens etc
+require('dotenv').config({path: path.join(__dirname, '../.env')})
 
 // the router
 const router = require('./middleware/router')
@@ -17,22 +19,21 @@ const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
 
 let bot
 let tlsOptions
-let botPath = '/gebeya-manager-path' // the secret path
 if (os.hostname() === 'K1DV5') {
-    bot = new Telegraf('959496597:AAEWFvI1oYv58RLrrckR_c1cW-4-tPZ1Pjw') // the testing bot
-    // bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
+    bot = new Telegraf(process.env.TEST_BOT) // the testing bot
+    // bot = new Telegraf(process.env.MAIN_BOT) // main bot
 } else {
     const cert = path.join(__dirname, '../self-server-cert.pem')
     const key = path.join(__dirname, '../self-server-key.pem')
     try {
-        bot = new Telegraf('949809527:AAGfH21rcESpeMZTcvZJYymAozX8llLjdDw') // main bot
+        bot = new Telegraf(process.env.MAIN_BOT) // main bot
         tlsOptions = {
             cert: fs.readFileSync(cert),
             key: fs.readFileSync(key),
         }
 
         // Set telegram webhook
-        bot.telegram.setWebhook('https://k1dv5.com:8443' + botPath, { source: cert })
+        bot.telegram.setWebhook('https://k1dv5.com:8443' + process.env.BOT_PATH, { source: cert })
     } catch(err) {
         fs.writeFileSync('err-webhook-set.txt', err)
     }
@@ -92,11 +93,11 @@ if (os.hostname() === 'K1DV5') {
     try {
         // set the info
         bot.context.botInfo = {username: 'GebeyaManagerBot'}
-        bot.startWebhook(botPath, tlsOptions, 8443).then(() => {
+        bot.startWebhook(process.env.BOT_PATH, tlsOptions, 8443).then(() => {
             fs.writeFileSync('err-webhook-start.txt', err)
         })
         // require('https')
-        // .createServer(tlsOptions, bot.webhookCallback(botPath))
+        // .createServer(tlsOptions, bot.webhookCallback(process.env.BOT_PATH))
         // .listen(8443)
     } catch(err) {
         fs.writeFileSync('err-webhook-start.txt', err)

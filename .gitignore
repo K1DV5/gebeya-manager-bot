@@ -4,3 +4,4 @@ images-staging
 design.txt
 pnpm-lock.yaml
 *.pem
+.env
