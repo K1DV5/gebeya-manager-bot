@@ -1,14 +1,4 @@
 
-var http = require('http');
-var server = http.createServer(function(req, res) {
-    res.writeHead(200, {'Content-Type': 'text/plain'});
-    var message = 'It works!\n',
-        version = 'NodeJS ' + process.versions.node + '\n',
-        response = [message, version].join('\n');
-    res.end(response);
-});
-server.listen();
-
 // -{node --inspect %f}
 const os = require('os')
 const path = require('path')
@@ -76,31 +66,34 @@ bot.context.defaultKeyboard = {
 // do actual work
 bot.use(router)
 
+function start(err) {
+    if (!err || ['ECONNREFUSED', 'ETIMEDOUT'].includes(err.code) && tried < trials) {
+        bot.launch().then(() => console.log('bot listening...')).catch((err)=>{
+            if (['ECONNREFUSED', 'ETIMEDOUT'].includes(err.code)) {
+                console.log(err.code, 'retrying...')
+                start()
+                tried++
+            } else {
+                throw err
+            }
+        })
+    } else {
+        throw err
+    }
+}
+
 if (os.hostname() === 'K1DV5') {
     let tried = 0
     let trials = 10
-    function retry(err) {
-        if (!err || ['ECONNREFUSED', 'ETIMEDOUT'].includes(err.code) && tried < trials) {
-            bot.launch().then(() => console.log('bot listening...')).catch((err)=>{
-                if (['ECONNREFUSED', 'ETIMEDOUT'].includes(err.code)) {
-                    console.log(err.code, 'retrying...')
-                    retry()
-                    tried++
-                } else {
-                    throw err
-                }
-            })
-        } else {
-            throw err
-        }
-    }
-    bot.catch(retry)
-    retry()
+    bot.catch(start)
+    start()
 } else {
     try {
         // set the info
         bot.context.botInfo = {username: 'GebeyaManagerBot'}
-        bot.startWebhook('/tg-gebeya', tlsOptions, 8443)
+        bot.startWebhook('/tg-gebeya', tlsOptions, 8443).then(() => {
+            fs.writeFileSync('err-webhook-start.txt', err)
+        })
     } catch(err) {
         fs.writeFileSync('err-webhook-start.txt', err)
     }

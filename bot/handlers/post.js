@@ -72,7 +72,7 @@ async function handleDescriptionStage(ctx) {
     ctx.people.set(username, {draft_description: description, conversation: 'post.price', removed_message_ids: newRemoved})
 }
 
-await function handlePriceStage(ctx) {
+async function handlePriceStage(ctx) {
     let username = ctx.from.username
     let price = ctx.message.text
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
