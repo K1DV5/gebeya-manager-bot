@@ -4,3 +4,4 @@ deployment:
     - export DEPLOYPATH=/home/gebeyama/gebeya-manager-bot/
     - /bin/cp -R bot $DEPLOYPATH
     - /bin/cp package.json $DEPLOYPATH
+    - cloudlinux-selector --json --interpreter nodejs --app-root $DEPLOYPATH restart
