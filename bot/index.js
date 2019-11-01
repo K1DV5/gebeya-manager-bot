@@ -34,7 +34,7 @@ if (os.hostname() === 'K1DV5') {
         }
 
         // Set telegram webhook
-        bot.telegram.setWebhook('https://gebeya-manager.com:8443' + process.env.BOT_PATH, { source: cert })
+        bot.telegram.setWebhook('https://gebeya-manager.com:80' + process.env.BOT_PATH, { source: cert })
     } catch(err) {
         fs.writeFileSync('err-webhook-set.txt', err)
     }
@@ -94,10 +94,10 @@ if (os.hostname() === 'K1DV5') {
     try {
         // set the info
         bot.context.botInfo = {username: 'GebeyaManagerBot'}
-        bot.startWebhook(process.env.BOT_PATH, tlsOptions, 8443)
+        bot.startWebhook(process.env.BOT_PATH, tlsOptions, 80)
         // require('https')
         // .createServer(tlsOptions, bot.webhookCallback(process.env.BOT_PATH))
-        // .listen(8443)
+        // .listen(80)
     } catch(err) {
         fs.writeFileSync('err-webhook-start.txt', err)
     }
