@@ -29,7 +29,7 @@ async function handlePost(ctx) {
         ctx.people.set(username, {
             to_update: channels[0],
             conversation: 'post.title',
-            removed_message_ids: `[${message.message_id}]`
+            removed_message_ids: `[${message.message_id},${ctx.update.message.message_id}]`
         })
     } else {
         let keyboard = makeKeyboardTiles(channels.map(ch => {return {text: '@' + ch, callback_data: 'post_channel:' + ch}}))
@@ -39,7 +39,7 @@ async function handlePost(ctx) {
             }
         })
         ctx.people.set(username, {
-            removed_message_ids: `[${message.message_id}]`
+            removed_message_ids: `[${message.message_id},${ctx.update.message.message_id}]`
         })
     }
 }
@@ -57,28 +57,31 @@ async function handleChannelStage(ctx) {
 
 async function handleTitleStage(ctx) {
     let username = ctx.from.username
+    let messageId = ctx.update.message.message_id
     let title = ctx.message.text
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let message = await ctx.reply('Write the description (bullet lists as well).')
-    let newRemoved = JSON.stringify([...removed, message.message_id])
+    let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
     ctx.people.set(username, {draft_title: title, conversation: 'post.description', removed_message_ids: newRemoved})
 }
 
 async function handleDescriptionStage(ctx) {
     let username = ctx.from.username
+    let messageId = ctx.update.message.message_id
     let description = ctx.message.text
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let message = await ctx.reply('And the price? How much is it?')
-    let newRemoved = JSON.stringify([...removed, message.message_id])
+    let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
     ctx.people.set(username, {draft_description: description, conversation: 'post.price', removed_message_ids: newRemoved})
 }
 
 async function handlePriceStage(ctx) {
     let username = ctx.from.username
+    let messageId = ctx.update.message.message_id
     let price = ctx.message.text
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let message = await ctx.reply('Send some photos and finally send the command /end when you\'re done.')
-    let newRemoved = JSON.stringify([...removed, message.message_id])
+    let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
     ctx.people.set(username, {draft_price: price, conversation: 'post.photo', removed_message_ids: newRemoved})
     // clear the images dir for the new photos
     let imagesDir = path.join(ctx.imagesDir, username, 'draft-images')
