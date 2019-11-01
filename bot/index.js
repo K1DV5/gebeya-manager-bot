@@ -25,19 +25,15 @@ if (os.hostname() === 'K1DV5') {
 } else {
     const cert = path.join(__dirname, process.env.SSL_CERT)
     const key = path.join(__dirname, process.env.SSL_KEY)
-    try {
-        // main bot, disable webhook reply to get sent message ids
-        bot = new Telegraf(process.env.MAIN_BOT, {telegram: {webhookReply: false}})
-        tlsOptions = {
-            cert: fs.readFileSync(cert),
-            key: fs.readFileSync(key),
-        }
-
-        // Set telegram webhook
-        bot.telegram.setWebhook('https://' + process.env.DOMAIN + process.env.BOT_PATH, { source: cert })
-    } catch(err) {
-        fs.writeFileSync('err-webhook-set.txt', err)
+    // main bot, disable webhook reply to get sent message ids
+    bot = new Telegraf(process.env.MAIN_BOT, {telegram: {webhookReply: false}})
+    tlsOptions = {
+        cert: fs.readFileSync(cert),
+        key: fs.readFileSync(key),
     }
+
+    // Set telegram webhook
+    bot.telegram.setWebhook('https://' + process.env.DOMAIN + process.env.BOT_PATH, { source: cert })
 }
 
 // the data models
@@ -91,14 +87,10 @@ if (os.hostname() === 'K1DV5') {
     bot.catch(start)
     start()
 } else {
-    try {
-        // set the info
-        bot.context.botInfo = {username: 'GebeyaManagerBot'}
-        bot.startWebhook(process.env.BOT_PATH, tlsOptions, 8443)
-        // require('https')
-        // .createServer(tlsOptions, bot.webhookCallback(process.env.BOT_PATH))
-        // .listen(8443)
-    } catch(err) {
-        fs.writeFileSync('err-webhook-start.txt', err)
-    }
+    // set the info
+    bot.context.botInfo = {username: 'GebeyaManagerBot'}
+    bot.startWebhook(process.env.BOT_PATH, tlsOptions, 8443)
+    // require('https')
+    // .createServer(tlsOptions, bot.webhookCallback(process.env.BOT_PATH))
+    // .listen(8443)
 }
