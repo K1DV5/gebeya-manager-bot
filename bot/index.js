@@ -33,7 +33,7 @@ if (os.hostname() === 'K1DV5') {
     }
 
     // Set telegram webhook
-    bot.telegram.setWebhook('https://' + process.env.DOMAIN + process.env.BOT_PATH, { source: cert })
+    bot.telegram.setWebhook('https://' + process.env.DOMAIN + process.env.BOT_PATH)
 }
 
 // the data models
@@ -65,6 +65,8 @@ bot.context.defaultKeyboard = {
 // do actual work
 bot.use(router)
 
+let tried = 0
+let trials = 10
 function start(err) {
     if (!err || ['ECONNREFUSED', 'ETIMEDOUT'].includes(err.code) && tried < trials) {
         bot.launch().then(() => console.log('bot listening...')).catch((err)=>{
@@ -82,14 +84,12 @@ function start(err) {
 }
 
 if (os.hostname() === 'K1DV5') {
-    let tried = 0
-    let trials = 10
     bot.catch(start)
     start()
 } else {
     // set the info
     bot.context.botInfo = {username: 'GebeyaManagerBot'}
-    bot.startWebhook(process.env.BOT_PATH, tlsOptions, 8443)
+    bot.startWebhook(process.env.BOT_PATH, null, 8443)
     // require('https')
     // .createServer(tlsOptions, bot.webhookCallback(process.env.BOT_PATH))
     // .listen(8443)
