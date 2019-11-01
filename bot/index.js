@@ -23,8 +23,8 @@ if (os.hostname() === 'K1DV5') {
     bot = new Telegraf(process.env.TEST_BOT) // the testing bot
     // bot = new Telegraf(process.env.MAIN_BOT) // main bot
 } else {
-    const cert = path.join(__dirname, process.env.SSL_CERT)
-    const key = path.join(__dirname, process.env.SSL_KEY)
+    const cert = process.env.SSL_CERT
+    const key = process.env.SSL_KEY
     // main bot, disable webhook reply to get sent message ids
     bot = new Telegraf(process.env.MAIN_BOT, {telegram: {webhookReply: false}})
     tlsOptions = {
