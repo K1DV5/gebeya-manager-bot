@@ -29,7 +29,7 @@ async function handlePost(ctx) {
         ctx.people.set(username, {
             to_update: channels[0],
             conversation: 'post.title',
-            removed_message_ids: `${message.messageId}`
+            removed_message_ids: `[${message.message_id}]`
         })
     } else {
         let keyboard = makeKeyboardTiles(channels.map(ch => {return {text: '@' + ch, callback_data: 'post_channel:' + ch}}))
@@ -39,7 +39,7 @@ async function handlePost(ctx) {
             }
         })
         ctx.people.set(username, {
-            removed_message_ids: `${message.messageId}`
+            removed_message_ids: `[${message.message_id}]`
         })
     }
 }
@@ -47,6 +47,7 @@ async function handlePost(ctx) {
 async function handleChannelStage(ctx) {
     let username = ctx.from.username
     let channel = ctx.update.callback_query.data
+    // already added to the removed ids
     ctx.people.set(username, {to_update: channel, conversation: 'post.title'})
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id

@@ -2,7 +2,7 @@
 /* DATA MODEL FOR THE BOT */
 
 /* escape from the encoding abomination hell */
-ALTER DATABASE gebeyama_gebeya CHARACTER SET = 'utf8mb4' COLLATE ='utf8mb4_unicode_ci';
+ALTER DATABASE k1dv5com_tg_gebeya CHARACTER SET = 'utf8mb4' COLLATE ='utf8mb4_unicode_ci';
 SET NAMES utf8mb4;
 
 DROP TABLE IF EXISTS notifications, channel_permissions, posts, channels, people;
@@ -83,9 +83,9 @@ END //
 DELIMITER ;
 /* insert into people (username) values('Ntsuhwork'); */
 /* insert into channels (username, admin, license_expiry) values('mygeb', 'Ntsuhwork', '1572382800'); */
-insert into people (username) values('K1DV5');
-insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1577836800');
-insert into channels (username, admin, license_expiry) values('mygebeyabags', 'K1DV5', '1577836800');
+/* insert into people (username) values('K1DV5'); */
+/* insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1577836800'); */
+/* insert into channels (username, admin, license_expiry) values('mygebeyabags', 'K1DV5', '1577836800'); */
 /* select * from people\G */
 /* insert into channel_permissions (channel, person, post, setting) values('mygeb', 'K1DV5', true, 9) */
 /* insert into posts (channel, message_id, title) values ('mygeb', 45, 'foo'); */

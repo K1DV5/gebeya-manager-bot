@@ -124,5 +124,6 @@ p = new people()
 // p.getConvo('K1DV5').then(console.log)
 // p.exists('K1DV5').then(console.log)
 // p.getChannels('kid',null,'post').then(console.log)
+p.get('K1DV5', 'removed_message_ids').then(console.log)
 
 module.exports = people

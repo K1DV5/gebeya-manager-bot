@@ -73,7 +73,7 @@ def generate_selfsigned_cert(hostname, public_ip=None, private_ip=None):
 
     return cert_pem, key_pem
 
-pair = generate_selfsigned_cert('k1dv5.com')
+pair = generate_selfsigned_cert('gebeya-manager.com')
 with open('self-server-cert.pem', 'wb') as file:
     file.write(pair[0])
 with open('self-server-key.pem', 'wb') as file:
