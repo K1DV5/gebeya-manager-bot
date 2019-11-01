@@ -18,19 +18,19 @@ const postsModel = require('./models/posts')
 const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
 
 let bot
-let tlsOptions
+// let tlsOptions
 if (os.hostname() === 'K1DV5') {
     bot = new Telegraf(process.env.TEST_BOT) // the testing bot
     // bot = new Telegraf(process.env.MAIN_BOT) // main bot
 } else {
-    const cert = process.env.SSL_CERT
-    const key = process.env.SSL_KEY
+    // const cert = process.env.SSL_CERT
+    // const key = process.env.SSL_KEY
     // main bot, disable webhook reply to get sent message ids
     bot = new Telegraf(process.env.MAIN_BOT, {telegram: {webhookReply: false}})
-    tlsOptions = {
-        cert: fs.readFileSync(cert),
-        key: fs.readFileSync(key),
-    }
+    // tlsOptions = {
+    //     cert: fs.readFileSync(cert),
+    //     key: fs.readFileSync(key),
+    // }
 
     // Set telegram webhook
     bot.telegram.setWebhook('https://' + process.env.DOMAIN + process.env.BOT_PATH)
@@ -90,7 +90,4 @@ if (os.hostname() === 'K1DV5') {
     // set the info
     bot.context.botInfo = {username: 'GebeyaManagerBot'}
     bot.startWebhook(process.env.BOT_PATH, null, 8443)
-    // require('https')
-    // .createServer(tlsOptions, bot.webhookCallback(process.env.BOT_PATH))
-    // .listen(8443)
 }

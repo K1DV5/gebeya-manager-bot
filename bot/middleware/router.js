@@ -43,9 +43,7 @@ async function router(ctx) {
                     await admin.handleAdminAdd(ctx)
                     return 1
                 } else if (command === '/try') {
-                    let message = await ctx.reply('new works', {reply_markup: {keyboard : [[{text: 'foo'}]]}})
-                    await ctx.telegram.deleteMessage(ctx.update.message.chat.id, message.message_id)
-                    ctx.reply('Hey')
+                    ctx.reply('Hey :)')
                     return 1
                 }
             }
