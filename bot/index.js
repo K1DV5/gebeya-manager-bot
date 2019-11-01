@@ -23,8 +23,8 @@ if (os.hostname() === 'K1DV5') {
     bot = new Telegraf(process.env.TEST_BOT) // the testing bot
     // bot = new Telegraf(process.env.MAIN_BOT) // main bot
 } else {
-    const cert = path.join(__dirname, '../self-server-cert.pem')
-    const key = path.join(__dirname, '../self-server-key.pem')
+    const cert = path.join(__dirname, process.env.SSL_CERT)
+    const key = path.join(__dirname, process.env.SSL_KEY)
     try {
         // main bot, disable webhook reply to get sent message ids
         bot = new Telegraf(process.env.MAIN_BOT, {telegram: {webhookReply: false}})
@@ -34,7 +34,7 @@ if (os.hostname() === 'K1DV5') {
         }
 
         // Set telegram webhook
-        bot.telegram.setWebhook('https://gebeya-manager.com:8443' + process.env.BOT_PATH, { source: cert })
+        bot.telegram.setWebhook('https://' + process.env.DOMAIN + process.env.BOT_PATH, { source: cert })
     } catch(err) {
         fs.writeFileSync('err-webhook-set.txt', err)
     }
