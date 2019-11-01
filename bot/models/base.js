@@ -105,7 +105,6 @@ class BaseModel {
                 let query = 'SELECT ' + cols + ' FROM ' + this.table + where
                 let result = await this.sql(query, values)
                 if (result.length) {
-                    console.log(result)
                     return result[0][cols]
                 }
                 return null
