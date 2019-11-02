@@ -348,7 +348,10 @@ async function handleEditPrice(ctx) {
     } else {
         postPrice = text
     }
-    ctx.people.set(username, {draft_price: postPrice, conversation: 'edit.ready'})
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
+    let messageId = ctx.update.message.message_id
+    let newRemoved = JSON.stringify([...removed, messageId])
+    ctx.people.set(username, {draft_price: postPrice, conversation: 'edit.ready', removed_message_ids: newRemoved})
     let adminData = await ctx.people.getDraft(username, 'edit')
     let collage = adminData.images.collage
     let caption = '<i>The new caption will look like this...</i>\n\n' + adminData.caption
