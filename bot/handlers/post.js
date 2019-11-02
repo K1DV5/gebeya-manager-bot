@@ -287,15 +287,15 @@ async function handleEditCaption(ctx) {
     if (postExists) {
         let messageId = ctx.update.callback_query.message.message_id
         let images = await ctx.posts.get({channel, message_id: postId}, 'image_ids')
+        let postUrl = 'https://t.me/' + messageIdDb
+        let text = 'Editting <a href="' + postUrl + '">this post</a>, write the new title. You can send <b>skip</b> To keep the existing title.'
+        let message = await ctx.reply(text, {parse_mode: 'html', disable_web_page_preview: true})
         ctx.people.set(username, {
             conversation: 'edit.title',
             to_update: messageIdDb,
-            removed_message_ids: JSON.stringify([messageId]),
+            removed_message_ids: JSON.stringify([messageId, message.message_id]),
             draft_image_ids: images
         })
-        let postUrl = 'https://t.me/' + messageIdDb
-        let text = 'Editting <a href="' + postUrl + '">this post</a>, write the new title. You can send <b>skip</b> To keep the existing title.'
-        ctx.reply(text, {parse_mode: 'html', disable_web_page_preview: true})
     } else {
         ctx.reply('Sorry, not found')
     }
@@ -304,8 +304,6 @@ async function handleEditCaption(ctx) {
 async function handleEditTitle(ctx) {
     let username = ctx.from.username
     let messageId = ctx.update.message.message_id
-    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
-    let newRemoved = JSON.stringify([...removed, messageId])
     let text = ctx.update.message.text
     let postTitle
     if (text === 'skip') {
@@ -315,15 +313,15 @@ async function handleEditTitle(ctx) {
     } else {
         postTitle = text
     }
+    let message = await ctx.reply('Send the new description. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
+    let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
     ctx.people.set(username, {draft_title: postTitle, conversation: 'edit.description', removed_message_ids: newRemoved})
-    ctx.reply('Send the new description. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
 }
 
 async function handleEditDescription(ctx) {
     let username = ctx.from.username
     let messageId = ctx.update.message.message_id
-    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
-    let newRemoved = JSON.stringify([...removed, messageId])
     let text = ctx.update.message.text
     let postDescription
     if (text === 'skip') {
@@ -333,8 +331,10 @@ async function handleEditDescription(ctx) {
     } else {
         postDescription = text
     }
+    let message = await ctx.reply('Send the new price. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
+    let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
     ctx.people.set(username, {draft_description: postDescription, conversation: 'edit.price', removed_message_ids: newRemoved})
-    ctx.reply('Send the new price. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
 }
 
 async function handleEditPrice(ctx) {
