@@ -26,7 +26,7 @@ async function handlePost(ctx) {
     }
     if (channels.length === 1) {
         let message = await ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
-        ctx.people.set(username, {
+        await ctx.people.set(username, {
             to_update: channels[0],
             conversation: 'post.title',
             removed_message_ids: `[${message.message_id},${ctx.update.message.message_id}]`
@@ -38,7 +38,7 @@ async function handlePost(ctx) {
                 inline_keyboard: keyboard,
             }
         })
-        ctx.people.set(username, {
+        await ctx.people.set(username, {
             removed_message_ids: `[${message.message_id},${ctx.update.message.message_id}]`
         })
     }
@@ -48,7 +48,7 @@ async function handleChannelStage(ctx) {
     let username = ctx.from.username
     let channel = ctx.update.callback_query.data
     // already added to the removed ids
-    ctx.people.set(username, {to_update: channel, conversation: 'post.title'})
+    await ctx.people.set(username, {to_update: channel, conversation: 'post.title'})
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     let text = 'You will be posting to @' + channel + '. What is the title of the post?'
@@ -62,7 +62,7 @@ async function handleTitleStage(ctx) {
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let message = await ctx.reply('Write the description (bullet lists as well).')
     let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
-    ctx.people.set(username, {draft_title: title, conversation: 'post.description', removed_message_ids: newRemoved})
+    await ctx.people.set(username, {draft_title: title, conversation: 'post.description', removed_message_ids: newRemoved})
 }
 
 async function handleDescriptionStage(ctx) {
@@ -72,7 +72,7 @@ async function handleDescriptionStage(ctx) {
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let message = await ctx.reply('And the price? How much is it?')
     let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
-    ctx.people.set(username, {draft_description: description, conversation: 'post.price', removed_message_ids: newRemoved})
+    await ctx.people.set(username, {draft_description: description, conversation: 'post.price', removed_message_ids: newRemoved})
 }
 
 async function handlePriceStage(ctx) {
@@ -82,7 +82,7 @@ async function handlePriceStage(ctx) {
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let message = await ctx.reply('Send some photos and finally send the command /end when you\'re done.')
     let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
-    ctx.people.set(username, {draft_price: price, conversation: 'post.photo', removed_message_ids: newRemoved})
+    await ctx.people.set(username, {draft_price: price, conversation: 'post.photo', removed_message_ids: newRemoved})
     // clear the images dir for the new photos
     let imagesDir = path.join(ctx.imagesDir, username, 'draft-images')
     rmdirWithFiles(imagesDir)
@@ -90,6 +90,10 @@ async function handlePriceStage(ctx) {
 
 async function handlePhotoStagePhotos(ctx) {
     let username = ctx.from.username
+    let messageId = ctx.update.message.message_id
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
+    let newRemoved = JSON.stringify([...removed, messageId])
+    await ctx.people.set(username, {draft_price: price, conversation: 'post.photo', removed_message_ids: newRemoved})
     let imagesDir = path.join(ctx.imagesDir, username, 'draft-images')
     let photo = ctx.update.message.photo
     let fileProps = await ctx.telegram.getFile(photo[photo.length-1].file_id)
@@ -100,6 +104,8 @@ async function handlePhotoStagePhotos(ctx) {
 
 async function handlePhotoStageEnd(ctx) {
     let username = ctx.from.username
+    let messageId = ctx.update.message.message_id
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let channel = await ctx.people.get(username, 'to_update')
     let logoImg = path.join(ctx.imagesDir, username, 'logo-' + channel + '.png')
     let draftCollage = path.join(ctx.imagesDir, username, 'draft-collage.jpg')
@@ -124,6 +130,8 @@ async function handlePhotoStageEnd(ctx) {
     await makeCollage(imagesDir, draftCollage, logoImg)  // make a collage and watermark it
     let images = await watermarkDir(imagesDir, imagesDir, logoImg)  // watermark every image
     let removedAtPost = [  // messages removed when the draft is posted
+        ...removed,
+        messageId,
         // intro to the watermarked images preview
         (await ctx.reply('The individual images will look like this...')).message_id]
     // the watermarked images
