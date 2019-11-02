@@ -43,7 +43,7 @@ async function router(ctx) {
                     await admin.handleAdminAdd(ctx)
                     return 1
                 } else if (command === '/try') {
-                    ctx.reply('Olla!')
+                    ctx.reply('Olla kid!')
                     return 1
                 }
             }
