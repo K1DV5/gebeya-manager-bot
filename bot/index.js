@@ -88,6 +88,6 @@ if (os.hostname() === 'K1DV5') {
     start()
 } else {
     // set the info
-    // bot.context.botInfo = {username: 'GebeyaManagerBot'}
+    bot.context.botInfo = {username: process.env.BOT_USERNAME} // missing when using webhook
     bot.startWebhook('/' + process.env.MAIN_BOT, null, 8443)
 }
