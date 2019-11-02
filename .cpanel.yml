@@ -1,7 +1,11 @@
 ---
 deployment:
-  tasks:
-    - export DEPLOYPATH=/home/gebeyama/gebeya-manager-bot/
-    - /bin/cp -R bot $DEPLOYPATH
-    - /bin/cp package.json $DEPLOYPATH
-    - cloudlinux-selector --json --interpreter nodejs --app-root $DEPLOYPATH restart
+    tasks:
+        # manual tasks are:
+        # - create a subdomain tg-bot
+        # - node setup: make sure the app uses the subdomain without any path
+        # - node setup: maybe manually restart the app
+        # - telegram: maybe manually set the webhook to https://tg-bot.<domain.com>/<bot-token>
+        - export DEPLOYPATH=/home/gebeyama/gebeya-manager-bot/
+        - /bin/cp -R bot $DEPLOYPATH
+        - /bin/cp package.json $DEPLOYPATH
