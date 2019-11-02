@@ -32,7 +32,8 @@ if (os.hostname() === 'K1DV5') {
     // main bot, disable webhook reply to get sent message ids and avoid other errors
     bot = new Telegraf(process.env.MAIN_BOT, {telegram: {webhookReply: false}})
     // Set telegram webhook. to make it secure, use the token as the path.
-    bot.telegram.setWebhook('https://tg-bot.' + process.env.DOMAIN + '/' + process.env.MAIN_BOT)
+    // commented to prevent setting it everytime this script is run
+    // bot.telegram.setWebhook('https://tg-bot.' + process.env.DOMAIN + '/' + process.env.MAIN_BOT)
 }
 
 // the data models
