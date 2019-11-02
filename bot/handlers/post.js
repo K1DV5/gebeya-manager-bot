@@ -352,7 +352,7 @@ async function handleEditPrice(ctx) {
     let adminData = await ctx.people.getDraft(username, 'edit')
     let collage = adminData.images.collage
     let caption = '<i>The new caption will look like this...</i>\n\n' + adminData.caption
-    let message = await ctx.replyWithPhoto(collage, {
+    ctx.replyWithPhoto(collage, {
         parse_mode: 'html',
         caption, reply_markup: {
             inline_keyboard: [
@@ -362,11 +362,6 @@ async function handleEditPrice(ctx) {
                 ]
             ]
         }
-    })
-    let removedIds = adminData.removedIds
-    removedIds.push(message.message_id)
-    ctx.people.set(username, {
-        removed_message_ids: JSON.stringify(removedIds), username
     })
 }
 
