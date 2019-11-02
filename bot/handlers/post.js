@@ -169,6 +169,7 @@ async function handlePostDraft(ctx) {
         let channel = adminData.destination
         let message = await ctx.telegram.sendPhoto('@' + channel, adminData.images.collage, {caption: adminData.caption})
         let postId = message.message_id
+        fs.writeFileSync('post.log', ctx.botInfo.username)
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + channel + '-' + postId
         ctx.telegram.editMessageReplyMarkup('@' + channel, postId, undefined, {
             inline_keyboard: [[{text: 'Buy', url: startUrl}]]
