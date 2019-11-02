@@ -33,24 +33,22 @@ async function handleWelcomeStart(ctx) {
 }
 
 async function handleStart(ctx) {
-    let userId = ctx.update.message.from.id
     let messageIdDb = ctx.state.payload.replace('-', '/')
     let [channel, postId] = messageIdDb.split('/')
     let postData = await ctx.posts.get({channel, message_id: postId})
     if (postData) {
         // add to the interested list
-        let previousCust = JSON.parse(postData.interested)
-        let name = ctx.from.first_name || ctx.from.username || '[Anonymous]'
         let custId = ctx.from.id
+        let name = ctx.from.first_name || ctx.from.username || '[Anonymous]'
         let customer = {name, id: custId}
-        let newList = JSON.stringify([...previousCust.filter(cst => cst.id != custId), customer])
+        let previousCust = JSON.parse(postData.interested).filter(cst => cst.id != custId)
+        let newList = JSON.stringify([...previousCust, customer])
         await ctx.posts.set({channel, message_id: postId}, {interested: newList})
         let data = {
             caption: postData.caption,
             image: JSON.parse(postData.image_ids).collage,
-            customers: previousCust,
+            customers: [...previousCust, {name: name + ' (NEW!)', id: custId}],
             author: postData.author,
-            customer,
             buttons: {
                 // classified on permissions basis
                 edit: [

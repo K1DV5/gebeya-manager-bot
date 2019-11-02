@@ -257,9 +257,6 @@ async function notifyDelete(ctx, channel, postId, data) {
 async function notifyBuy(ctx, channel, postId, data) {
     // send messages to both parties.
     let itemLink = `<a href="https://t.me/${channel + '/' + postId}">this item</a>`
-    let authorChat = await ctx.people.get(data.author, 'chat_id')
-
-    data.customers.push({name: data.customer.name + ' (NEW!)', id: data.customer.id})
     let interestedText = '\n\nInterested customers are:\n' + data.customers.map(cust => '\u2022 <a href="tg://user?id=' + cust.id + '">' + cust.name + '</a>').join('\n')
     // to the customer
     let contactText = await ctx.channels.get(channel, 'contact_text')
@@ -278,7 +275,7 @@ async function notifyBuy(ctx, channel, postId, data) {
     // if editor is not admin, notify them as well
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (channelAdmin !== data.author) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    await clearPrevious(ctx, channel, postId) // no exclude
+    clearPrevious(ctx, channel, postId) // no exclude
     caption = '<i>You have a new customer for</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
     let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
     let notifs = others
