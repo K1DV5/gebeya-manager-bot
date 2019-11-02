@@ -149,7 +149,6 @@ async function handlePhotoStageEnd(ctx) {
         }
     },
     )
-    removedAtPost.push(postPreview.message_id)
     let imageIds = {
         collage: postPreview.photo.slice(-1)[0].file_id,
         watermarked: previewImages.map(msg => msg.photo.slice(-1)[0].file_id)

@@ -78,8 +78,12 @@ async function notifyPost(ctx, channel, postId, data) { // send post notificatio
     let addr = channel + '/' + postId
     let newLink = '<a href="https://t.me/' + addr + '">here</a>'
     let caption = '<i>Done, you can find your new post </i>' + newLink + '<i>, and it looks like this.</i>\n\n' + data.caption
-    let message = await ctx.replyWithPhoto(data.image, {caption,
-        parse_mode: 'html', ...makeKeyboard('all', data.buttons)
+    let chatId = ctx.update.callback_query.from.id
+    let messageId = ctx.update.callback_query.message.message_id
+    ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
+        parse_mode: 'html',
+        disable_web_page_preview: true,
+        ...makeKeyboard('all', data.buttons)
     })
     // to the others
     let others = await ctx.channels.getPermitted(channel)
