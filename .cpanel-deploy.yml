@@ -11,7 +11,7 @@ deployment:
         # - local: git remote add cpanel ssh://<cp-user>@<domain.tld>/home/<cp-user>/<repo-root>
         # - local: git push cpanel [everytime]
         # - cpanel.node: maybe manually restart the app [everytime ?]
-        - cloudlinux-selector --json --interpreter nodejs --app-root /home/gebeyama/gebeya-manager-bot restart
+            # - cloudlinux-selector --json --interpreter nodejs --app-root /home/gebeyama/gebeya-manager-bot restart
 
         # following are used when the app root is NOT the repo root
         # in that case, uncommenent them and rename this file to .cpanel.yml, put .env file in app root
