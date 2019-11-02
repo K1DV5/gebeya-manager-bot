@@ -183,7 +183,7 @@ async function handlePostDraft(ctx) {
         })
         // remove the preview messages
         let chatId = ctx.update.callback_query.from.id
-        adminData.removedIds.map(async id => { await deleteMessage(ctx, chatId, id) })
+        adminData.removedIds.map(id => { deleteMessage(ctx, chatId, id) })
         // record the post
         await ctx.posts.insert({
             channel,
@@ -272,8 +272,40 @@ async function handleDetails(ctx) {  // details callback
     }
 }
 
+async function handleEditCaption(ctx) {
+    let username = ctx.from.username
+    let input = ctx.update.callback_query
+    let messageIdDb = input.data
+    let [channel, postId] = messageIdDb.split('/')
+    let checkDate = ctx.update.callback_query.message.date * 1
+    let licenseValid = await ctx.channels.licenseIsValid(channel, checkDate)
+    if (!licenseValid) {
+        ctx.reply('Your license for this channel has expired. Contact @' + ctx.admins + ' for renewal.')
+        return
+    }
+    let postExists = await ctx.posts.exists({channel, message_id: postId})
+    if (postExists) {
+        let messageId = ctx.update.callback_query.message.message_id
+        let images = await ctx.posts.get({channel, message_id: postId}, 'image_ids')
+        ctx.people.set(username, {
+            conversation: 'edit.title',
+            to_update: messageIdDb,
+            removed_message_ids: JSON.stringify([messageId]),
+            draft_image_ids: images
+        })
+        let postUrl = 'https://t.me/' + messageIdDb
+        let text = 'Editting <a href="' + postUrl + '">this post</a>, write the new title. You can send <b>skip</b> To keep the existing title.'
+        ctx.reply(text, {parse_mode: 'html', disable_web_page_preview: true})
+    } else {
+        ctx.reply('Sorry, not found')
+    }
+}
+
 async function handleEditTitle(ctx) {
     let username = ctx.from.username
+    let messageId = ctx.update.message.message_id
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
+    let newRemoved = JSON.stringify([...removed, messageId])
     let text = ctx.update.message.text
     let postTitle
     if (text === 'skip') {
@@ -283,12 +315,15 @@ async function handleEditTitle(ctx) {
     } else {
         postTitle = text
     }
-    ctx.people.set(username, {draft_title: postTitle, conversation: 'edit.description'})
+    ctx.people.set(username, {draft_title: postTitle, conversation: 'edit.description', removed_message_ids: newRemoved})
     ctx.reply('Send the new description. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
 }
 
 async function handleEditDescription(ctx) {
     let username = ctx.from.username
+    let messageId = ctx.update.message.message_id
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
+    let newRemoved = JSON.stringify([...removed, messageId])
     let text = ctx.update.message.text
     let postDescription
     if (text === 'skip') {
@@ -298,7 +333,7 @@ async function handleEditDescription(ctx) {
     } else {
         postDescription = text
     }
-    ctx.people.set(username, {draft_description: postDescription, conversation: 'edit.price'})
+    ctx.people.set(username, {draft_description: postDescription, conversation: 'edit.price', removed_message_ids: newRemoved})
     ctx.reply('Send the new price. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
 }
 
@@ -348,6 +383,8 @@ async function handleEditSaveDiscard(ctx) {
             price: adminData.price,
             caption: adminData.caption
         })
+        // remove the unnecessary messages
+        adminData.removedIds.map(id => { deleteMessage(ctx, chatId, id) })
         // edit the post
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
         ctx.telegram.editMessageCaption('@' + channel, postId, undefined, adminData.caption, {
@@ -375,35 +412,6 @@ async function handleEditSaveDiscard(ctx) {
         deleteMessage(ctx, chatId, deletedMessage)
     }
     ctx.people.clearDraft(username)
-}
-
-async function handleEditCaption(ctx) {
-    let username = ctx.from.username
-    let input = ctx.update.callback_query
-    let messageIdDb = input.data
-    let [channel, postId] = messageIdDb.split('/')
-    let checkDate = ctx.update.callback_query.message.date * 1
-    let licenseValid = await ctx.channels.licenseIsValid(channel, checkDate)
-    if (!licenseValid) {
-        ctx.reply('Your license for this channel has expired. Contact @' + ctx.admins + ' for renewal.')
-        return
-    }
-    let postExists = await ctx.posts.exists({channel, message_id: postId})
-    if (postExists) {
-        let messageId = ctx.update.callback_query.message.message_id
-        let images = await ctx.posts.get({channel, message_id: postId}, 'image_ids')
-        ctx.people.set(username, {
-            conversation: 'edit.title',
-            to_update: messageIdDb,
-            removed_message_ids: JSON.stringify([messageId]),
-            draft_image_ids: images
-        })
-        let postUrl = 'https://t.me/' + messageIdDb
-        let text = 'Editting <a href="' + postUrl + '">this post</a>, write the new title. You can send <b>skip</b> To keep the existing title.'
-        ctx.reply(text, {parse_mode: 'html', disable_web_page_preview: true})
-    } else {
-        ctx.reply('Sorry, not found')
-    }
 }
 
 async function handleSold(ctx) {
