@@ -169,16 +169,13 @@ async function handlePostDraft(ctx) {
         let channel = adminData.destination
         let message = await ctx.telegram.sendPhoto('@' + channel, adminData.images.collage, {caption: adminData.caption})
         let postId = message.message_id
-        let newMessageIdDb = channel + '/' + message.message_id
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + channel + '-' + postId
         ctx.telegram.editMessageReplyMarkup('@' + channel, postId, undefined, {
             inline_keyboard: [[{text: 'Buy', url: startUrl}]]
         })
         // remove the preview messages
         let chatId = ctx.update.callback_query.from.id
-        await Promise.all(adminData.removedIds.map(async id => {
-            await deleteMessage(ctx, chatId, id)
-        }))
+        adminData.removedIds.map(async id => { await deleteMessage(ctx, chatId, id) })
         // record the post
         await ctx.posts.insert({
             channel,
@@ -191,17 +188,18 @@ async function handlePostDraft(ctx) {
             image_ids: JSON.stringify(adminData.images),
             post_date: ctx.update.callback_query.message.date
         })
-        // reply notice
+        // send notifs
+        let postAddr = channel + '/' + postId
         let data = {
             caption: adminData.caption,
             image: adminData.images.collage,
             buttons: {
                 // classified on permissions basis
                 edit: [
-                    {text: 'Edit caption', callback_data: 'edit:' + newMessageIdDb},
-                    {text: 'Mark sold', callback_data: 'sold:' + newMessageIdDb},
+                    {text: 'Edit caption', callback_data: 'edit:' + postAddr},
+                    {text: 'Mark sold', callback_data: 'sold:' + postAddr},
                 ],
-                delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}]
+                delete: [{text: 'Delete', callback_data: 'delete:' + postAddr}]
             }
         }
         await notifyPost(ctx, channel, postId, data)
