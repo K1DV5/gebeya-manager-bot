@@ -93,7 +93,7 @@ async function handlePhotoStagePhotos(ctx) {
     let messageId = ctx.update.message.message_id
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let newRemoved = JSON.stringify([...removed, messageId])
-    await ctx.people.set(username, {draft_price: price, conversation: 'post.photo', removed_message_ids: newRemoved})
+    await ctx.people.set(username, {removed_message_ids: newRemoved})
     let imagesDir = path.join(ctx.imagesDir, username, 'draft-images')
     let photo = ctx.update.message.photo
     let fileProps = await ctx.telegram.getFile(photo[photo.length-1].file_id)
