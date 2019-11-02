@@ -223,11 +223,10 @@ async function notifyRepost(ctx, channel, oldId, newId, data) {
 async function notifyDelete(ctx, channel, postId, data) {
     let editor = ctx.from.username
     let permitted = await ctx.channels.getPermitted(channel)
-    let addr = channel + '/' + postId
     // edit the editor message
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
-    let caption = data.text + '\n\n' + data.caption
+    let caption = data.text + '\n<i>from</i> @' + channel + '\n\n' + data.caption
     let keyboard
     if (data.author === editor) {
         keyboard = makeKeyboard('all', data.buttons)

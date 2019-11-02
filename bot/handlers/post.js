@@ -417,7 +417,6 @@ async function handleSold(ctx) {
     let [channel, messageId] = messageIdDb.split('/')
     let post = await ctx.posts.get({channel, message_id: messageId},
         ['caption', 'image_ids', 'state', 'sold_template'])
-    let captionEntities = ctx.update.callback_query.message.caption_entities
     if (post.state === 'available' || ctx.state.forceSold) {
         let soldTemplate = await ctx.channels.get(channel, 'sold_template')
         let soldText = soldTemplate.replace(/:caption\b/, post.caption)
