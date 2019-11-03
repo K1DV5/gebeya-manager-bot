@@ -239,29 +239,11 @@ async function handleDetails(ctx) {  // details callback
     let [channel, postId] = ctx.update.callback_query.data.split('/')
     let messageDetails = await ctx.posts.get({channel, message_id: postId})
     if (messageDetails && messageDetails.state === 'available') {
-        // let person = (await ctx.state.sql(`SELECT a.username
-        //                         FROM posts AS p
-        //                         INNER JOIN channels AS c
-        //                             ON p.channel = c.username
-        //                         INNER JOIN people AS a
-        //                             ON c.admin = a.username
-        //                         WHERE channel = ? AND message_id = ?`,
-        //                         [channel, postId]))[0]
         let images = JSON.parse(messageDetails.image_ids).watermarked
         images = images.map(img => {return {type: 'photo', media: img}})
         // put the caption on the last one
         images[images.length - 1].caption = messageDetails.caption
         ctx.replyWithMediaGroup(images, {
-            // reply_markup: {
-            //     inline_keyboard: [
-            //             [
-            //                 {
-            //                     text: 'Contact seller',
-            //                     url: 'https://t.me/' + person.username
-            //                 }
-            //             ]
-            //         ]
-            // }
         })
     } else if (messageDetails.state === 'sold') {
         ctx.reply('Sorry, item already sold.')
@@ -428,8 +410,11 @@ async function handleSold(ctx) {
         let soldTemplate = await ctx.channels.get(channel, 'sold_template')
         let soldText = soldTemplate.replace(/:caption\b/, post.caption)
         try { // for when trying to edit with same content
-            ctx.telegram.editMessageCaption('@' + channel, messageId, undefined, soldText)
-        } catch {}
+            await ctx.telegram.editMessageCaption('@' + channel, messageId, undefined, soldText)
+        } catch {
+            // for when called from the handleDeletePost
+            ctx.state.editFail = true
+        }
         if (ctx.state.forceSold === undefined) {
             // change the state
             ctx.posts.set({channel, message_id: messageId}, {
@@ -445,7 +430,7 @@ async function handleSold(ctx) {
                     delete: [{text: 'Delete', callback_data: 'delete:' + messageIdDb}]
                 }
             }
-            await notifySold(ctx, channel, messageId, data)
+            notifySold(ctx, channel, messageId, data)
         }
     } else {
         ctx.reply('Already marked sold.')
@@ -521,8 +506,12 @@ async function handleDeletePost(ctx) {
         } catch {
             ctx.state.forceSold = true // force make it sold
             await handleSold(ctx)
-            let itemLink = `<a href="https://t.me/${postAddr}">ITEM</a>`
-            text = '----\n' + itemLink + ' MARKED SOLD\ncould not be deleted\ncan be deleted manually\n----'
+            if (ctx.state.editFail) { // most probably the message is alreary deleted
+                text = '--- ITEM DELETED ---'
+            } else {
+                let itemLink = `<a href="https://t.me/${postAddr}">ITEM</a>`
+                text = '----\n' + itemLink + ' MARKED SOLD\ncould not be deleted\ncan be deleted manually\n----'
+            }
         }
         let collage = JSON.parse(postData.image_ids).collage
         let data = {
