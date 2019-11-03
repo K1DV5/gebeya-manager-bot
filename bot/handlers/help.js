@@ -21,7 +21,7 @@ let helpDetails = {
 
             'Update permissions': 'This setting retrieves admins\' permissions from Telegram so that the permissions can be used with the bot as well. Four permissions are retrieved:\n  ◦ Post messages (to post)\n  ◦ Change channel info (for settings)\n  ◦ Edit messages (to edit and repost others posts)\n  ◦ Delete messages (to delete others posts)\nNote: the person who is registered as the admin of the channel here and the creator of the channel (if they are not the same person) will always be granted all permissions.'
         }).map(([key, val]) => '<b>' + key + '</b>: ' + val).join('\n\n'),
-    license: 'Command /license\n\nThis command shows the license information of your registered channels. You can see when it will expire (or if it has.) Licenses are shown per channel.\n\nWhen your channel\'s license expires, you will not be able to post new items, change settings, edit or repost existing items. However, already posted items will continue to be functional. You will get notifications when someone selects your item, you can mark an item sold (But not undo it).',
+    license: 'Command /license\n\nThis command shows the license information of your registered channels. You can see when it will expire (or if it has.) Licenses are shown per channel.\n\nWhen your channel\'s license expires, you will not be able to post new items, change settings, edit or repost existing items. However, already posted items will continue to be functional. You will get notifications when someone selects your item, you can mark an item sold and delete it (But not repost it).',
 }
 
 function handleHelp(ctx) {

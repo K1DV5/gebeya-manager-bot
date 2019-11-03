@@ -18,7 +18,7 @@ const path = require('path')
 
 async function handlePost(ctx) {
     let username = ctx.from.username
-    // prepare choices
+    // prepare licensed channel choices
     let channels = await ctx.people.getChannels(username, ctx.update.message.date, 'post')
     if (!channels.length) {
         ctx.reply('There is no channel with a valid license registered here by you. Contact @' + ctx.admins[0] + ' for renewal.')

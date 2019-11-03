@@ -3,7 +3,7 @@
 const os = require('os')
 const path = require('path')
 const Telegraf = require('telegraf')
-const fs = require('fs')
+// const fs = require('fs')
 // for the tokens etc
 require('dotenv').config({path: path.join(__dirname, '../.env')})
 

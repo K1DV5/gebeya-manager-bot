@@ -38,39 +38,35 @@ class channels extends BaseModel {
 
     async updatePermissions(channel, admins, exclude) {
         // channel: string
-        // permissions: {username: {status: string, ...permissions: string}}
+        // permissions: {username: {status: string, ...permissions: bool}}
         await this.sql('DELETE FROM channel_permissions WHERE channel = ?', [channel])
         const adminHere = await this.get(channel, 'admin')
         for (let admin of admins) {
             if (['administrator', 'creator'].includes(admin.status)) {
                 let username = admin.user.username
-                if (username === exclude || username === adminHere) {
+                if (username === exclude || username === adminHere || !username) {
                     continue
                 }
                 // clear the current one
-                await this.sql(`DELETE FROM people WHERE username = ?
-                                    AND username NOT IN (SELECT admin FROM channels)
-                                    AND username NOT IN (SELECT person FROM channel_permissions)`,
+                this.sql(`DELETE FROM people WHERE username = ?
+                              AND username NOT IN (SELECT admin FROM channels)
+                              AND username NOT IN (SELECT person FROM channel_permissions)`,
                     [username])
                 // insert anew
-                await this.sql('INSERT IGNORE INTO people (username) VALUES (?)', [username])
-                let canPost
-                let canChangeSettings
-                let canEditOtherPosts
-                let canDeleteOtherPosts
+                this.sql('INSERT IGNORE INTO people (username) VALUES (?)', [username])
+                let perms
                 if (admin.status === 'creator') {
-                    canPost = true
-                    canChangeSettings = true
-                    canEditOtherPosts = true
-                    canDeleteOtherPosts = true
+                    perms = { post: true, edit: true, setting: true, delete: true }
                 } else {
-                    canPost = admin.can_post_messages
-                    canChangeSettings = admin.can_change_info
-                    canEditOtherPosts = admin.can_edit_messages
-                    canDeleteOtherPosts = admin.can_delete_messages
+                    perms = {
+                        post: admin.can_post_messages,
+                        edit: admin.can_edit_messages,
+                        setting: admin.can_change_info,
+                        delete: admin.can_delete_messages
+                    }
                 }
                 this.sql('INSERT INTO channel_permissions (channel, person, post, setting, edit_others, delete_others) VALUES (?,?,?,?,?,?)',
-                    [channel, username, canPost, canChangeSettings, canEditOtherPosts, canDeleteOtherPosts]
+                    [channel, username, perms.post, perms.setting, perms.edit, perms.delete]
                 )
             }
         }
