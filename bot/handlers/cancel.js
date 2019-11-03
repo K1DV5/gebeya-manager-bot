@@ -7,12 +7,14 @@ async function handleCancel(ctx) {
         let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
         let chatId = ctx.update.message.chat.id
         if (removed !== null && removed.length) {
+            // prevent deleting the edit origin
+            if (convo.split('.', 1)[0] === 'edit') removed = removed.slice(1)
             await Promise.all(removed.map(async id => {
                 await deleteMessage(ctx, chatId, id)
             }))
         }
         let about = convo.split('.', 1)[0]
-        await ctx.people.clearDraft(username)
+        ctx.people.clearDraft(username)
         await ctx.reply(about[0].toUpperCase() + about.slice(1) + ' cancelled.')
     } else {
         await ctx.reply('You aren\'t doing anything.')
