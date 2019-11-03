@@ -306,7 +306,7 @@ async function handleEditTitle(ctx) {
     let messageId = ctx.update.message.message_id
     let text = ctx.update.message.text
     let postTitle
-    if (text === 'skip') {
+    if (text.toLowerCase() === 'skip') {
         let destination = await ctx.people.get(username, 'to_update')
         let [channel, message_id] = destination.split('/')
         postTitle = await ctx.posts.get({channel, message_id}, 'title')
@@ -324,7 +324,7 @@ async function handleEditDescription(ctx) {
     let messageId = ctx.update.message.message_id
     let text = ctx.update.message.text
     let postDescription
-    if (text === 'skip') {
+    if (text.toLowerCase() === 'skip') {
         let destination = await ctx.people.get(username, 'to_update')
         let [channel, message_id] = destination.split('/')
         postDescription = await ctx.posts.get({channel, message_id}, 'description')
@@ -341,7 +341,7 @@ async function handleEditPrice(ctx) {
     let username = ctx.from.username
     let text = ctx.update.message.text
     let postPrice
-    if (text === 'skip') {
+    if (text.toLowerCase() === 'skip') {
         let destination = await ctx.people.get(username, 'to_update')
         let [channel, message_id] = destination.split('/')
         postPrice = await ctx.posts.get({channel, message_id}, 'price')
