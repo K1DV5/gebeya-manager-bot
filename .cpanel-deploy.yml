@@ -3,6 +3,8 @@ deployment:
     tasks:
         # manual tasks are:
         # - telegram: maybe manually set the webhook to https://tg-bot.<domain.com>/<bot-token>
+        # - cpanel.db: create db and user, set encoding and collation to utf8mb4[_unicode_ci]
+        # - .env: set domain, bot username & token, db name & user & password, 
         # - cpanel.subdomain: create a subdomain tg-bot
         # - cpanel.subdomain: ensure that it uses ssl certificates
         # - cpanel.node: create app on the subdomain and without any path, app-root=repo-root

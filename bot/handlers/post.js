@@ -372,8 +372,10 @@ async function handleEditSaveDiscard(ctx) {
     let username = ctx.from.username
     let chatId = ctx.update.callback_query.from.id
     let command = ctx.update.callback_query.data
+    let adminData = await ctx.people.getDraft(username, 'edit')
+    // remove the unnecessary messages
+    adminData.removedIds.map(id => { deleteMessage(ctx, chatId, id) })
     if (command === 'save') {
-        let adminData = await ctx.people.getDraft(username, 'edit')
         let [channel, postId] = adminData.destination.split('/')
         ctx.posts.set({channel, message_id: postId}, {
             title: adminData.title,
@@ -381,8 +383,6 @@ async function handleEditSaveDiscard(ctx) {
             price: adminData.price,
             caption: adminData.caption
         })
-        // remove the unnecessary messages
-        adminData.removedIds.map(id => { deleteMessage(ctx, chatId, id) })
         // edit the post
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
         ctx.telegram.editMessageCaption('@' + channel, postId, undefined, adminData.caption, {
@@ -405,9 +405,9 @@ async function handleEditSaveDiscard(ctx) {
         }
         await notifyEdit(ctx, channel, postId, data)
     } else {
-        let deletedMessage = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))[0]
+        let messageId = ctx.update.callback_query.message.message_id
+        deleteMessage(ctx, chatId, messageId)
         ctx.reply('Editting cancelled.')
-        deleteMessage(ctx, chatId, deletedMessage)
     }
     ctx.people.clearDraft(username)
 }
