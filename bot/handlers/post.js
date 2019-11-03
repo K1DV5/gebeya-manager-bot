@@ -373,8 +373,6 @@ async function handleEditSaveDiscard(ctx) {
     let chatId = ctx.update.callback_query.from.id
     let command = ctx.update.callback_query.data
     let adminData = await ctx.people.getDraft(username, 'edit')
-    // remove the unnecessary messages
-    adminData.removedIds.map(id => { deleteMessage(ctx, chatId, id) })
     if (command === 'save') {
         let [channel, postId] = adminData.destination.split('/')
         ctx.posts.set({channel, message_id: postId}, {
@@ -383,13 +381,20 @@ async function handleEditSaveDiscard(ctx) {
             price: adminData.price,
             caption: adminData.caption
         })
+        // remove the unnecessary messages
+        adminData.removedIds.map(id => { deleteMessage(ctx, chatId, id) })
         // edit the post
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
-        ctx.telegram.editMessageCaption('@' + channel, postId, undefined, adminData.caption, {
-            reply_markup: {
-                inline_keyboard: [[{text: 'Buy', url: startUrl}]]
-            }
-        })
+        try {
+            await ctx.telegram.editMessageCaption('@' + channel, postId, undefined, adminData.caption, {
+                reply_markup: {
+                    inline_keyboard: [[{text: 'Buy', url: startUrl}]]
+                }
+            })
+        } catch {
+            ctx.reply('Couldn\'t edit the post')
+            return
+        }
         let newMessageIdDb = channel + '/' + postId
         let data = {
             caption: adminData.caption,
@@ -405,6 +410,8 @@ async function handleEditSaveDiscard(ctx) {
         }
         await notifyEdit(ctx, channel, postId, data)
     } else {
+        // delete everything except the origin
+        adminData.removedIds.slice(1).map(id => { deleteMessage(ctx, chatId, id) })
         let messageId = ctx.update.callback_query.message.message_id
         deleteMessage(ctx, chatId, messageId)
         ctx.reply('Editting cancelled.')
