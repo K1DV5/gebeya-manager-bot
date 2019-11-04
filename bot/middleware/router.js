@@ -110,7 +110,8 @@ async function router(ctx) {
                 let {command, payload} = splitCommand(text)
                 ctx.state.payload = payload
                 if (command === '/start') {
-                    if (payload) {
+                    // refresh the chat id, refresh is in the bot link at /adminadd
+                    if (payload && payload !== 'refresh') {
                         await start.handleStart(ctx)
                     } else {
                         await start.handleWelcomeStart(ctx)

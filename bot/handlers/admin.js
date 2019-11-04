@@ -1,6 +1,9 @@
 const {argparse} = require('../utils')
 const {deleteMessage} = require('./notify')
 
+// start parameter for refreshing chat id link
+const startParam = 'refresh'
+
 async function handleAdminAdd(ctx) {
     let text = ctx.message.text
     let args = argparse(text)
@@ -27,7 +30,8 @@ async function handleAdminAdd(ctx) {
                 // set permissions for other admins
                 await ctx.channels.updatePermissions(args.c, admins, ctx.botInfo.username)
 
-                ctx.reply(`New channel @${args.c} by @${args.u} added, license expiring on ${licenseExpiry.toString()}`)
+                let startLink = `<a href="https://t.me/${ctx.botInfo.username}?start=${startParam}">Talk to @${ctx.botInfo.username} to start using it.</a>`
+                ctx.replyWithHTML(`Channel @${args.c} by @${args.u} added, license expiring on ${licenseExpiry.toString()}. ` + startLink)
             } catch(err) {
                 if (err.code === 400) {
                     await ctx.reply(err.description + '\n\nMaybe the bot is not added to the channel, or the channel doesn\'t exist.')
