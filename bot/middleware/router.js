@@ -69,6 +69,8 @@ async function adminRoute(ctx) {
             } else if (command === '/try') {
                 ctx.reply('Olla!')
                 return 1
+            } else {
+                ctx.reply('No command like that')
             }
         }
     }
@@ -79,6 +81,7 @@ async function router(ctx) {
         return 1
     }
     let username = ctx.from.username
+    let isAdmin = ctx.admins.includes(username)
 
     // updateType: 'message',
     // updateSubTypes: [ 'text' ],
@@ -126,7 +129,7 @@ async function router(ctx) {
                 } else if (command === '/cancel') {
                     await cancel.handleCancel(ctx)
                     return
-                } else if (!innerCommands.includes(command)) {
+                } else if (!isAdmin) {
                     ctx.reply('The command ' + command + ' is not supported. Look at the /help.')
                     return
                 }
@@ -241,7 +244,6 @@ async function router(ctx) {
     }
 
     // if it gets here, check if they are admin --------------------------------------------------------
-    let isAdmin = ctx.admins.includes(username)
     if (isAdmin) {
         await adminRoute(ctx)
         return 1
