@@ -5,7 +5,7 @@
 /* ALTER DATABASE k1dv5com_tg_gebeya CHARACTER SET = 'utf8mb4' COLLATE ='utf8mb4_unicode_ci'; */
 /* SET NAMES utf8mb4; */
 
-DROP TABLE IF EXISTS notifications, channel_permissions, posts, channels, people;
+DROP TABLE IF EXISTS notifications, channel_permissions, posts, posts_archive, channels, people;
 
 /* admins of channels */
 CREATE TABLE people (username VARCHAR(96) PRIMARY KEY,
@@ -51,6 +51,22 @@ CREATE TABLE posts (channel VARCHAR(96),
                     FOREIGN KEY (author) REFERENCES people(username)
 ) ENGINE = INNODB;
 
+/* archive for the posts, they go here when reposted */
+CREATE TABLE posts_archive (channel VARCHAR(96),
+                    message_id VARCHAR(96),
+                    author VARCHAR(96),
+                    title VARCHAR(255),
+                    description VARCHAR(2440),
+                    price VARCHAR(255),
+                    /* json encoded list of image ids, the first is the collage */
+                    image_ids VARCHAR(3000),
+                    post_date VARCHAR(128),
+                    sold_date VARCHAR(128),
+                    interested VARCHAR(3000) DEFAULT '[]', /* [{name: '', id: ''},...] - interested customers, max 21 */
+                    PRIMARY KEY (channel, message_id)
+                    /* no caption, state cols and no constraints, it is just an archive */
+) ENGINE = INNODB;
+
 CREATE TABLE channel_permissions (
     person VARCHAR(96),
     channel VARCHAR(96),
@@ -70,7 +86,7 @@ CREATE TABLE notifications (
     message_id VARCHAR(96),
     PRIMARY KEY (person, channel, post_id),
     FOREIGN KEY (person) REFERENCES people(username),
-    FOREIGN KEY (channel, post_id) REFERENCES posts(channel, message_id)
+    FOREIGN KEY (channel, post_id) REFERENCES posts(channel, message_id) ON UPDATE CASCADE
 ) ENGINE = INNODB;
 
 /* trigger for setting the default value for the contact text of channels */
@@ -83,8 +99,8 @@ END //
 DELIMITER ;
 /* insert into people (username) values('Ntsuhwork'); */
 /* insert into channels (username, admin, license_expiry) values('mygeb', 'Ntsuhwork', '1572382800'); */
-/* insert into people (username) values('K1DV5'); */
-/* insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1577836800'); */
+insert into people (username) values('K1DV5');
+insert into channels (username, admin, license_expiry) values('mygeb', 'K1DV5', '1577836800');
 /* insert into channels (username, admin, license_expiry) values('mygebeyabags', 'K1DV5', '1577836800'); */
 /* select * from people\G */
 /* insert into channel_permissions (channel, person, post, setting) values('mygeb', 'K1DV5', true, 9) */

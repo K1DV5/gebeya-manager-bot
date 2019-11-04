@@ -12,13 +12,14 @@ class posts extends BaseModel {
             'state',
             'caption',
             'image_ids',
-            'state',
-            'marked_sold',
             'post_date',
             'sold_date',
             'interested'
         ]
         super('posts', cols)
+        this.archiveTable = 'posts_archive'
+        // unnecessary cols for archived posts
+        this.archiveCols = this.cols.filter(col => !['state', 'caption'].includes(col))
     }
 
     delete(messageId) {
@@ -57,13 +58,21 @@ class posts extends BaseModel {
         return await this.sql(query, [channel, postId])
     }
 
-    async deleteNotif(channel, postId) {
-        let query = 'DELETE FROM notifications WHERE channel=? AND post_id=?'
-        await this.sql(query, [channel, postId])
+    async renew(channel, oldId, newId, newAuthor) {
+        // used for reposting where the old post is not needed anymore but may be editted in the future
+        // archives the old post
+        let colsPart = this.archiveCols.join(',')
+        // copy the data to the archive table
+        let copyQuery = `INSERT IGNORE INTO posts_archive (${colsPart}) SELECT ${colsPart} FROM ${this.table} WHERE channel=? AND message_id=?`
+        await this.sql(copyQuery, [channel, oldId])
+        // change the message_id in the main table
+        let query = `UPDATE ${this.table} SET message_id=?, author=? WHERE channel=? AND message_id=?`
+        await this.sql(query, [newId, newAuthor, channel, oldId])
     }
 }
 
 // let p = new posts()
 // p.get('mygeb/126').then(console.log)
+// p.renew('mygeb', 320, 200).then(console.log)
 
 module.exports = posts

@@ -453,29 +453,22 @@ async function handleRepost(ctx) {
     if (postData.state !== 'deleted') {
         // remove the current one
         deleteMessage(ctx, '@' + channel, postId)
-        // also in db
-        ctx.posts.set({channel, message_id: postId}, {state: 'deleted'})
     }
     let collageId = JSON.parse(postData.image_ids).collage
     let message = await ctx.telegram.sendPhoto('@' + channel, collageId, {caption: postData.caption})
-    let newMessageIdDb = channel + '/' + message.message_id
-    ctx.posts.insert({
-        channel,
-        message_id: message.message_id,
-        author: ctx.from.username,
-        title: postData.title,
-        description: postData.description,
-        price: postData.price,
-        caption: postData.caption,
-        image_ids: postData.image_ids
-    })
-    let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + newMessageIdDb.replace('/', '-')
+    // renew in the db, this also affects the notifications table
+    await ctx.posts.renew(channel, postId, message.message_id, ctx.from.username)
+    // make buy button
+    let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + channel + '-' + message.message_id
     ctx.telegram.editMessageReplyMarkup('@' + channel, message.message_id, undefined, {
         inline_keyboard: [
             [{text: 'Buy', url: startUrl}]
         ]
     })
+    // notify
+    let newMessageIdDb = channel + '/' + message.message_id
     let data = {
+        author: postData.author,
         caption: postData.caption,
         image: collageId,
         buttons: {
@@ -487,7 +480,7 @@ async function handleRepost(ctx) {
             delete: [{text: 'Delete', callback_data: 'delete:' + newMessageIdDb}]
         }
     }
-    notifyRepost(ctx, channel, postId, message.message_id, data)
+    notifyRepost(ctx, channel, message.message_id, data)
 }
 
 async function handleDeletePost(ctx) {
