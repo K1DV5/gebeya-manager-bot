@@ -23,6 +23,7 @@ const callbackHandlers = {
 const commandHandlers = {
     '/start': ctx => {
         // refresh the chat id, refresh is in the bot link at /adminadd
+        let payload = ctx.state.payload
         if (payload && payload !== 'refresh') {
             start.handleStart(ctx)
         } else {
@@ -167,11 +168,7 @@ async function customerRoute(ctx) {
             let {command, payload} = splitCommand(text)
             ctx.state.payload = payload
             if (command === '/start') {
-                if (payload) {
-                    await handleStart(ctx)
-                } else {
-                    await handleWelcomeStart(ctx)
-                }
+                commandHandlers['/start'](ctx)
             } else {
                 ctx.reply('You are not an admin of any channel here, you can\'t use that.')
             }
@@ -219,7 +216,6 @@ async function router(ctx) {
     if (!ctx.from) return 1 
 
     let username = ctx.from.username
-
     ctx.state.isChannelAdmin = await ctx.people.exists(username)
     if (ctx.state.isChannelAdmin) {
         // conversation independent ----------------------------------------------

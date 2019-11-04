@@ -127,7 +127,9 @@ class BaseModel {
         if (result.length === 1) {
             return result[0]
         }
-        return result
+        if (result.length) {
+            return result
+        }
     }
 
     set(index, params) {
