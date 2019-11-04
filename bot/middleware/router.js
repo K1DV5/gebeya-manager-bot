@@ -22,6 +22,17 @@ const callbackHandlers = {
 
 const innerCommands = ['/end', '/cancel']
 
+function splitCommand(text) {
+    // split command and payload
+    text = text.trim()
+    if (text.includes(' ')) {
+        let command =text.split(' ', 1)[0]
+        let payload = text.slice(text.indexOf(' ') + 1)
+        return {command, payload}
+    }
+    return {command: text}
+}
+
 async function router(ctx) {
     if (!ctx.from) { // some updates aren't from a person, like channel post editted...
         return 1
@@ -38,7 +49,7 @@ async function router(ctx) {
     if (isAdmin) {
         if (updateType === 'message') {
             if (updateSubTypes.includes('text')) {
-                let command = ctx.message.text.split(' ', 1)[0]
+                let {command} = splitCommand(ctx.message.text)
                 if (command === '/adminadd') {
                     await admin.handleAdminAdd(ctx)
                     return 1
@@ -68,10 +79,10 @@ async function router(ctx) {
         } else if (updateSubTypes.includes('text')) { // commands that work anywhere
             let text = ctx.message.text
             if (text[0] === '/') { // command
-                let command = text.split(' ', 1)[0]
-                ctx.state.payload = text.slice(text.indexOf(' ') + 1)
+                let {command, payload} = splitCommand(text)
+                ctx.state.payload = payload
                 if (command === '/start') {
-                    if (text.split(' ').length > 1) {
+                    if (payload) {
                         await start.handleStart(ctx)
                     } else {
                         await start.handleWelcomeStart(ctx)
@@ -204,7 +215,19 @@ async function router(ctx) {
     } else {
         if (updateSubTypes.includes('text')) {
             let text = ctx.message.text
-            if (/hi|hello/.test(text.toLowerCase())) {
+            if (text[0] === '/') { // a command
+                let {command, payload} = splitCommand(text)
+                ctx.state.payload = payload
+                if (command === '/start') {
+                    if (payload) {
+                        await handleStart(ctx)
+                    } else {
+                        await handleWelcomeStart(ctx)
+                    }
+                } else {
+                    ctx.reply('You are not an admin of any channel here, you can\'t use that.')
+                }
+            } else if (/hi|hello/.test(text.toLowerCase())) {
                 ctx.reply('Hi, maybe you need /help')
             } else {
                 ctx.reply(ctx.fallbackReply)
