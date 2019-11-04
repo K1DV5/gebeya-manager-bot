@@ -21,6 +21,7 @@ let bot
 // let tlsOptions
 if (os.hostname() === 'K1DV5') {
     bot = new Telegraf(process.env.TEST_BOT) // the testing bot
+    // bot = new Telegraf(process.env.MAIN_BOT) // the testing bot
 } else {
     // const cert = process.env.SSL_CERT
     // const key = process.env.SSL_KEY

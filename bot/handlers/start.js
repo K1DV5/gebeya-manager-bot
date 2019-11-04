@@ -36,7 +36,7 @@ async function handleStart(ctx) {
     let messageIdDb = ctx.state.payload.replace('-', '/')
     let [channel, postId] = messageIdDb.split('/')
     let postData = await ctx.posts.get({channel, message_id: postId})
-    if (postData) {
+    if (postData.length) {
         // add to the interested list
         let custId = ctx.from.id
         let name = ctx.from.first_name || ctx.from.username || '[Anonymous]'
