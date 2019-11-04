@@ -60,6 +60,8 @@ async function customerRoute(ctx) {
 }
 
 async function adminRoute(ctx) {
+    let updateType = ctx.updateType
+    let updateSubTypes = ctx.updateSubTypes
     if (updateType === 'message') {
         if (updateSubTypes.includes('text')) {
             let {command} = splitCommand(ctx.message.text)
@@ -143,13 +145,14 @@ async function router(ctx) {
                 let text = ctx.message.text
                 if (/hi|hello/.test(text.toLowerCase())) {
                     ctx.reply('Hi, maybe you need /help')
-                } else {
+                } else if (!isAdmin) {
                     ctx.reply(ctx.fallbackReply)
+                    return
                 }
-            } else {
+            } else if (!isAdmin) {
                 ctx.reply(ctx.fallbackReply)
+                return
             }
-            return
         } else if (convo === 'post.title') {
             if (updateSubTypes.includes('text')) {
                 post.handleTitleStage(ctx)
@@ -238,11 +241,7 @@ async function router(ctx) {
             return
         } else {
         }
-    } else {
-        await customerRoute(ctx)
-        return
     }
-
     // if it gets here, check if they are admin --------------------------------------------------------
     if (isAdmin) {
         await adminRoute(ctx)
@@ -250,6 +249,8 @@ async function router(ctx) {
     }
     // not else because the admin can be a channel admin as well
 
+    // the customer
+    await customerRoute(ctx)
     return 1
 }
 
