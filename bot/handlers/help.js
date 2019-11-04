@@ -24,6 +24,8 @@ let helpDetails = {
     license: 'Command /license\n\nThis command shows the license information of your registered channels. You can see when it will expire (or if it has.) Licenses are shown per channel.\n\nWhen your channel\'s license expires, you will not be able to post new items, change settings, edit or repost existing items. However, already posted items will continue to be functional. You will get notifications when someone selects your item, you can mark an item sold and delete it (But not repost it).',
 }
 
+let customerHelp = 'This is the customer help.\n\nThis bot is built to help improve communication between sellers and buyers on channels. The customer browses one of the channels managed by this bot, and will find a button below each post. When that button is selected, the customer will be redirected to the bot and the bot will notify the seller about the customer and the item they want. Additionally, it will show the item and contact information to the customer that the seller has specified so that the customer can contact the seller.\n\nIf you would like to register your own channel to manage it with the bot, please contact @:admin.'
+
 function handleHelp(ctx) {
     let text = ctx.update.message.text
     if (ctx.state.isChannelAdmin) {
@@ -39,11 +41,11 @@ function handleHelp(ctx) {
             if (Object.keys(helpDetails).includes(item)) {
                 ctx.reply(helpDetails[item], {parse_mode: 'html'})
             } else {
-                ctx.reply('Command not found. See /help.')
+                ctx.reply('There is no command /' + item)
             }
         }
     } else {
-        ctx.reply(ctx.fallbackReply)
+        ctx.reply(customerHelp.replace(':admin', ctx.admins[0]))
     }
 }
 
