@@ -20,7 +20,134 @@ const callbackHandlers = {
     'settings:': settings.handleSettingIntro,
 }
 
-const innerCommands = ['/end', '/cancel']
+const commandHandlers = {
+    '/start': ctx => {
+        // refresh the chat id, refresh is in the bot link at /adminadd
+        if (payload && payload !== 'refresh') {
+            start.handleStart(ctx)
+        } else {
+            start.handleWelcomeStart(ctx)
+        }
+    },
+    '/post': post.handlePost,
+    '/settings': settings.handleSettings,
+    '/help': help.handleHelp,
+    '/license': license.handleLicense,
+    '/cancel': cancel.handleCancel
+}
+
+const convoHandlers = {
+    null: ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            let text = ctx.message.text
+            if (/hi|hello/.test(text.toLowerCase())) {
+                ctx.reply('Hi, maybe you need /help')
+            } else if (!isAdmin) {
+                ctx.reply(ctx.fallbackReply)
+            }
+        } else if (!isAdmin) {
+            ctx.reply(ctx.fallbackReply)
+        }
+    },
+
+    'post.title': ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            post.handleTitleStage(ctx)
+        } else {
+            ctx.reply('Please send a text for the title, or maybe you need /help.')
+        }
+    },
+
+    'post.description': ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            post.handleDescriptionStage(ctx)
+        } else {
+            ctx.reply('Please send a text for the description, or maybe you need /help.')
+        }
+    },
+
+    'post.price': ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            post.handlePriceStage(ctx)
+        } else {
+            ctx.reply('Please send a text for the price, or maybe you need /help.')
+        }
+    },
+
+    'post.photo': ctx => {
+        if (ctx.updateSubTypes.includes('photo')) {
+            post.handlePhotoStagePhotos(ctx)
+        } else if (ctx.updateSubTypes.includes('text') && ctx.message.text === '/end') {
+            post.handlePhotoStageEnd(ctx)
+        } else {
+            ctx.reply('Please send some photos for the post and finally send /end, or maybe look at the /help.')
+        }
+    },
+
+    'edit.title': ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            post.handleEditTitle(ctx)
+        } else {
+            ctx.reply('Please send a text for the title, or maybe you need /help.')
+        }
+    },
+
+    'edit.description': ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            post.handleEditDescription(ctx)
+        } else {
+            ctx.reply('Please send a text for the description, or maybe you need /help.')
+        }
+    },
+
+    'edit.price': ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            post.handleEditPrice(ctx)
+        } else {
+            ctx.reply('Please send a text for the price, or maybe you need /help.')
+        }
+    },
+
+    'settings.logo.document': ctx => {
+        if (ctx.updateSubTypes.includes('document')) {
+            settings.handleSettingLogoDoc(ctx)
+        } else {
+            ctx.reply('Please send an image FILE for the logo')
+        }
+    },
+
+    'settings.caption_template.text': ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            settings.handleSettingTextCaptionTempl(ctx)
+        } else {
+            ctx.reply('Please send a text for the caption template, or maybe you need /help.')
+        }
+    },
+
+    'settings.sold_template.text': ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            settings.handleSettingTextSoldTempl(ctx)
+        } else {
+            ctx.reply('Please send a text for the sold template, or maybe you need /help.')
+        }
+    },
+
+    'settings.contact_text.text': ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            settings.handleSettingTextContactText(ctx)
+        } else {
+            ctx.reply('Please send a text for the contact text, or maybe you need /help.')
+        }
+    },
+
+    'settings.description_bullet.text': ctx => {
+        if (ctx.updateSubTypes.includes('text')) {
+            settings.handleSettingTextDescBullet(ctx)
+        } else {
+            ctx.reply('Please send a text for the description bullet, or maybe you need /help.')
+        }
+    }
+}
 
 function splitCommand(text) {
     // split command and payload
@@ -34,8 +161,7 @@ function splitCommand(text) {
 }
 
 async function customerRoute(ctx) {
-    let updateSubTypes = ctx.updateSubTypes
-    if (updateSubTypes.includes('text')) {
+    if (ctx.updateSubTypes.includes('text')) {
         let text = ctx.message.text
         if (text[0] === '/') { // a command
             let {command, payload} = splitCommand(text)
@@ -67,188 +193,62 @@ async function adminRoute(ctx) {
             let {command} = splitCommand(ctx.message.text)
             if (command === '/adminadd') {
                 await admin.handleAdminAdd(ctx)
-                return 1
             } else if (command === '/try') {
                 ctx.reply('Olla!')
-                return 1
-            } else {
+            } else if (command[0] === '/'){
                 ctx.reply('No command like that')
             }
         }
     }
 }
 
-async function router(ctx) {
-    if (!ctx.from) { // some updates aren't from a person, like channel post editted...
-        return 1
+async function callbackRoute(ctx) {
+    let callbackData = ctx.update.callback_query.data
+    for (let [prefix, handler] of Object.entries(callbackHandlers)) {
+        if (callbackData.slice(0, prefix.length) === prefix) {
+            // // remove the prefix, and the colon
+            ctx.update.callback_query.data = callbackData.slice(prefix.length)
+            await handler(ctx)
+            ctx.answerCbQuery('Done')
+        }
     }
-    let username = ctx.from.username
-    let isAdmin = ctx.admins.includes(username)
+}
 
-    // updateType: 'message',
-    // updateSubTypes: [ 'text' ],
-    let updateType = ctx.updateType
-    let updateSubTypes = ctx.updateSubTypes
+async function router(ctx) {
+    // some updates aren't from a person, like channel post editted...
+    if (!ctx.from) return 1 
+
+    let username = ctx.from.username
 
     ctx.state.isChannelAdmin = await ctx.people.exists(username)
     if (ctx.state.isChannelAdmin) {
         // conversation independent ----------------------------------------------
-        if (updateType === 'callback_query') {
-            let callbackData = ctx.update.callback_query.data
-            for (let [prefix, handler] of Object.entries(callbackHandlers)) {
-                if (callbackData.slice(0, prefix.length) === prefix) {
-                    // // remove the prefix, and the colon
-                    ctx.update.callback_query.data = callbackData.slice(prefix.length)
-                    handler(ctx)
-                    ctx.answerCbQuery('Done')
-                    return
-                }
-            }
-        } else if (updateSubTypes.includes('text')) { // commands that work anywhere
+        if (ctx.updateType === 'callback_query') {
+            await callbackRoute(ctx)
+            return 1
+        } else if (ctx.updateSubTypes.includes('text')) {
             let text = ctx.message.text
-            if (text[0] === '/') { // command
-                let {command, payload} = splitCommand(text)
+            let {command, payload} = splitCommand(text)
+            if (Object.keys(commandHandlers).includes(command)) { // commands that work anywhere
                 ctx.state.payload = payload
-                if (command === '/start') {
-                    // refresh the chat id, refresh is in the bot link at /adminadd
-                    if (payload && payload !== 'refresh') {
-                        await start.handleStart(ctx)
-                    } else {
-                        await start.handleWelcomeStart(ctx)
-                    }
-                    return
-                } else if (command === '/post') {
-                    await post.handlePost(ctx)
-                    return
-                } else if (command === '/settings') {
-                    await settings.handleSettings(ctx)
-                    return
-                } else if (command === '/help') {
-                    help.handleHelp(ctx)
-                    return
-                } else if (command === '/license') {
-                    await license.handleLicense(ctx)
-                    return
-                } else if (command === '/cancel') {
-                    await cancel.handleCancel(ctx)
-                    return
-                } else if (!isAdmin) {
-                    ctx.reply('The command ' + command + ' is not supported. Look at the /help.')
-                    return
-                }
+                let handler = commandHandlers[command]
+                await handler(ctx)
+                return 1
             }
         }
-
         // conversation dependent ------------------------------------------------
         let convo = await ctx.people.getConvo(username)
-        if (convo === null) { // idle
-            if (updateSubTypes.includes('text')) {
-                let text = ctx.message.text
-                if (/hi|hello/.test(text.toLowerCase())) {
-                    ctx.reply('Hi, maybe you need /help')
-                } else if (!isAdmin) {
-                    ctx.reply(ctx.fallbackReply)
-                    return
-                }
-            } else if (!isAdmin) {
-                ctx.reply(ctx.fallbackReply)
-                return
-            }
-        } else if (convo === 'post.title') {
-            if (updateSubTypes.includes('text')) {
-                post.handleTitleStage(ctx)
-                return
-            } else {
-                ctx.reply('Please send a text for the title, or maybe you need /help.')
-            }
-        } else if (convo === 'post.description') {
-            if (updateSubTypes.includes('text')) {
-                post.handleDescriptionStage(ctx)
-                return
-            } else {
-                ctx.reply('Please send a text for the description, or maybe you need /help.')
-            }
-        } else if (convo === 'post.price') {
-            if (updateSubTypes.includes('text')) {
-                post.handlePriceStage(ctx)
-                return
-            } else {
-                ctx.reply('Please send a text for the price, or maybe you need /help.')
-            }
-        } else if (convo === 'post.photo') {
-            if (updateSubTypes.includes('photo')) {
-                await post.handlePhotoStagePhotos(ctx)
-                return
-            } else if (updateSubTypes.includes('text') && ctx.message.text === '/end') {
-                await post.handlePhotoStageEnd(ctx)
-            } else {
-                ctx.reply('Please send some photos for the post and finally send /end, or maybe look at the /help.')
-            }
-        } else if (convo === 'edit.title') {
-            if (updateSubTypes.includes('text')) {
-                await post.handleEditTitle(ctx)
-                return
-            } else {
-                ctx.reply('Please send a text for the title, or maybe you need /help.')
-            }
-        } else if (convo === 'edit.description') {
-            if (updateSubTypes.includes('text')) {
-                await post.handleEditDescription(ctx)
-                return
-            } else {
-                ctx.reply('Please send a text for the description, or maybe you need /help.')
-            }
-        } else if (convo === 'edit.price') {
-            if (updateSubTypes.includes('text')) {
-                await post.handleEditPrice(ctx)
-                return
-            } else {
-                ctx.reply('Please send a text for the price, or maybe you need /help.')
-            }
-        } else if (convo === 'settings.logo.document') {
-            if (updateSubTypes.includes('document')) {
-                await settings.handleSettingLogoDoc(ctx)
-            } else {
-                ctx.reply('Please send an image FILE for the logo')
-            }
-            return
-        } else if (convo === 'settings.caption_template.text') {
-            if (updateSubTypes.includes('text')) {
-                await settings.handleSettingTextCaptionTempl(ctx)
-            } else {
-                ctx.reply('Please send a text for the caption template, or maybe you need /help.')
-            }
-            return
-        } else if (convo === 'settings.sold_template.text') {
-            if (updateSubTypes.includes('text')) {
-                await settings.handleSettingTextSoldTempl(ctx)
-            } else {
-                ctx.reply('Please send a text for the sold template, or maybe you need /help.')
-            }
-            return
-        } else if (convo === 'settings.contact_text.text') {
-            if (updateSubTypes.includes('text')) {
-                await settings.handleSettingTextContactText(ctx)
-            } else {
-                ctx.reply('Please send a text for the contact text, or maybe you need /help.')
-            }
-            return
-        } else if (convo === 'settings.description_bullet.text') {
-            if (updateSubTypes.includes('text')) {
-                await settings.handleSettingTextDescBullet(ctx)
-            } else {
-                ctx.reply('Please send a text for the description bullet, or maybe you need /help.')
-            }
-            return
-        } else {
+        if (Object.keys(convoHandlers).includes(String(convo))) {
+            let handler = convoHandlers[convo]
+            handler(ctx)
+            return 1
         }
     }
-    // if it gets here, check if they are admin --------------------------------------------------------
-    if (isAdmin) {
+    // if it gets here, check if they are admin --------------------------------------
+    if (ctx.admins.includes(username)) { // admin
         await adminRoute(ctx)
         return 1
     }
-    // not else because the admin can be a channel admin as well
 
     // the customer
     await customerRoute(ctx)
