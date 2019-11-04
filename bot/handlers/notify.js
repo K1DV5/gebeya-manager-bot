@@ -124,9 +124,9 @@ async function notifyEdit(ctx, channel, postId, data) {
     // to the others
     let others = permitted.filter(person => ![editor, author].includes(person.person)) // make sure the editor and author are not included
     if (editor !== author) others.push({person: author, edit_others: true, delete_others: true})
-    // if editor is not admin, notify them as well
+    // if neither editor nor the author is admin, notify them as well
     let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
+    if (![editor, author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     // clear the previous notifs of the others
     await clearPrevious(ctx, channel, postId, messageId)
     caption = '@' + editor + ' <i>editted the caption of</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
@@ -140,7 +140,6 @@ async function notifyEdit(ctx, channel, postId, data) {
 
 async function notifySold(ctx, channel, postId, data) {
     let editor = ctx.from.username
-    let author = await ctx.posts.get({channel, message_id: postId}, 'author') // who first posted it
     let permitted = await ctx.channels.getPermitted(channel)
     let addr = channel + '/' + postId
     let itemLink = '<a href="https://t.me/' + addr + '">this item</a>'
@@ -149,7 +148,7 @@ async function notifySold(ctx, channel, postId, data) {
     let messageId = ctx.update.callback_query.message.message_id
     let caption = '<i>You marked</i> ' + itemLink + ' <b>sold</b>.\n\n' + data.caption
     let keyboard
-    if (author === editor) {
+    if (data.author === editor) {
         keyboard = makeKeyboard('all', data.buttons)
     } else {
         let permissions = permitted.filter(p => p.person === editor)[0]
@@ -161,11 +160,11 @@ async function notifySold(ctx, channel, postId, data) {
         ...keyboard
     })
     // to the others
-    let others = permitted.filter(person => ![editor, author].includes(person.person)) // make sure the editor and author are not included
-    if (editor !== author) others.push({person: author, edit_others: true, delete_others: true})
-    // if editor is not admin, notify them as well
+    let others = permitted.filter(person => ![editor, data.author].includes(person.person)) // make sure the editor and author are not included
+    if (editor !== data.author) others.push({person: data.author, edit_others: true, delete_others: true})
+    // if neither editor nor the author is admin, notify them as well
     let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
+    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     await clearPrevious(ctx, channel, postId, messageId)
     caption = '@' + editor + ' <i> marked </i> ' + itemLink + ' <i>sold on</i> @' + channel + '.\n\n' + data.caption
     let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
@@ -201,9 +200,9 @@ async function notifyRepost(ctx, channel, newId, data) {
     // to the others
     let others = permitted.filter(person => ![editor, data.author].includes(person.person)) // make sure the editor and author are not included
     if (editor !== data.author) others.push({person: data.author, edit_others: true, delete_others: true})
-    // if editor is not admin, notify them as well
+    // if neither editor nor the author is admin, notify them as well
     let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
+    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     // the notif data is expected to be already renewed at repost
     await clearPrevious(ctx, channel, newId, messageId)
     caption = '@' + editor + ' <i>reposted</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
@@ -237,7 +236,7 @@ async function notifyDelete(ctx, channel, postId, data) {
     // to the others
     let others = permitted.filter(person => person.person !== editor) // make sure the editor is not included
     let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (channelAdmin !== editor) others.push({person: channelAdmin, edit_others: true, delete_others: true})
+    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     await clearPrevious(ctx, channel, postId, messageId)
     caption = data.text + '\n<i>by</i> ' + '@' + editor + ' <i>from</i> @' + channel
     let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)

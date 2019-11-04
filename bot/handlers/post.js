@@ -405,7 +405,7 @@ async function handleSold(ctx) {
     let messageIdDb = ctx.update.callback_query.data
     let [channel, messageId] = messageIdDb.split('/')
     let post = await ctx.posts.get({channel, message_id: messageId},
-        ['caption', 'image_ids', 'state', 'sold_template'])
+        ['caption', 'image_ids', 'state', 'sold_template', 'author'])
     if (post.state === 'available' || ctx.state.forceSold) {
         let soldTemplate = await ctx.channels.get(channel, 'sold_template')
         let soldText = soldTemplate.replace(/:caption\b/, post.caption)
@@ -423,6 +423,7 @@ async function handleSold(ctx) {
             })
             let data = {
                 caption: soldText,
+                author: post.author,
                 image: post.image_ids,
                 buttons: {
                     // classified on permissions basis
