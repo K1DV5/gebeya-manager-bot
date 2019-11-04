@@ -33,6 +33,47 @@ function splitCommand(text) {
     return {command: text}
 }
 
+async function customerRoute(ctx) {
+    let updateSubTypes = ctx.updateSubTypes
+    if (updateSubTypes.includes('text')) {
+        let text = ctx.message.text
+        if (text[0] === '/') { // a command
+            let {command, payload} = splitCommand(text)
+            ctx.state.payload = payload
+            if (command === '/start') {
+                if (payload) {
+                    await handleStart(ctx)
+                } else {
+                    await handleWelcomeStart(ctx)
+                }
+            } else {
+                ctx.reply('You are not an admin of any channel here, you can\'t use that.')
+            }
+        } else if (/hi|hello/.test(text.toLowerCase())) {
+            ctx.reply('Hi, maybe you need /help')
+        } else {
+            ctx.reply(ctx.fallbackReply)
+        }
+    } else {
+        ctx.reply(ctx.fallbackReply)
+    }
+}
+
+async function adminRoute(ctx) {
+    if (updateType === 'message') {
+        if (updateSubTypes.includes('text')) {
+            let {command} = splitCommand(ctx.message.text)
+            if (command === '/adminadd') {
+                await admin.handleAdminAdd(ctx)
+                return 1
+            } else if (command === '/try') {
+                ctx.reply('Olla!')
+                return 1
+            }
+        }
+    }
+}
+
 async function router(ctx) {
     if (!ctx.from) { // some updates aren't from a person, like channel post editted...
         return 1
@@ -43,24 +84,6 @@ async function router(ctx) {
     // updateSubTypes: [ 'text' ],
     let updateType = ctx.updateType
     let updateSubTypes = ctx.updateSubTypes
-
-    // admin dependent --------------------------------------------------------
-    let isAdmin = ctx.admins.includes(username)
-    if (isAdmin) {
-        if (updateType === 'message') {
-            if (updateSubTypes.includes('text')) {
-                let {command} = splitCommand(ctx.message.text)
-                if (command === '/adminadd') {
-                    await admin.handleAdminAdd(ctx)
-                    return 1
-                } else if (command === '/try') {
-                    ctx.reply('Olla!')
-                    return 1
-                }
-            }
-        }
-    }
-    // not else because the admin can be a channel admin as well
 
     ctx.state.isChannelAdmin = await ctx.people.exists(username)
     if (ctx.state.isChannelAdmin) {
@@ -213,29 +236,17 @@ async function router(ctx) {
         } else {
         }
     } else {
-        if (updateSubTypes.includes('text')) {
-            let text = ctx.message.text
-            if (text[0] === '/') { // a command
-                let {command, payload} = splitCommand(text)
-                ctx.state.payload = payload
-                if (command === '/start') {
-                    if (payload) {
-                        await handleStart(ctx)
-                    } else {
-                        await handleWelcomeStart(ctx)
-                    }
-                } else {
-                    ctx.reply('You are not an admin of any channel here, you can\'t use that.')
-                }
-            } else if (/hi|hello/.test(text.toLowerCase())) {
-                ctx.reply('Hi, maybe you need /help')
-            } else {
-                ctx.reply(ctx.fallbackReply)
-            }
-        } else {
-            ctx.reply(ctx.fallbackReply)
-        }
+        await customerRoute(ctx)
+        return
     }
+
+    // if it gets here, check if they are admin --------------------------------------------------------
+    let isAdmin = ctx.admins.includes(username)
+    if (isAdmin) {
+        await adminRoute(ctx)
+        return 1
+    }
+    // not else because the admin can be a channel admin as well
 
     return 1
 }
