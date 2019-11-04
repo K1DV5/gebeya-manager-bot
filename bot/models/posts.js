@@ -66,7 +66,7 @@ class posts extends BaseModel {
         let copyQuery = `INSERT IGNORE INTO posts_archive (${colsPart}) SELECT ${colsPart} FROM ${this.table} WHERE channel=? AND message_id=?`
         await this.sql(copyQuery, [channel, oldId])
         // change the message_id in the main table
-        let query = `UPDATE ${this.table} SET message_id=?, author=? state="available" WHERE channel=? AND message_id=?`
+        let query = `UPDATE ${this.table} SET message_id=?, author=?, state="available" WHERE channel=? AND message_id=?`
         await this.sql(query, [newId, newAuthor, channel, oldId])
     }
 }
