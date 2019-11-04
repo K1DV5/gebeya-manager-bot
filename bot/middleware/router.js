@@ -207,6 +207,7 @@ async function callbackRoute(ctx) {
             ctx.update.callback_query.data = callbackData.slice(prefix.length)
             await handler(ctx)
             ctx.answerCbQuery('Done')
+            return
         }
     }
 }
