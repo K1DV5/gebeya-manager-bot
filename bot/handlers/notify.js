@@ -205,7 +205,7 @@ async function notifyRepost(ctx, channel, newId, data) {
     if (data.author === editor) {
         keyboard = makeKeyboard('all', data.buttons)
     } else {
-        let permissions = permitted.filter(p => p.person === editor)[0]
+        let permissions = others.filter(p => p.person === editor)[0]
         keyboard = makeKeyboard(permissions, data.buttons)
     }
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
@@ -238,7 +238,7 @@ async function notifyDelete(ctx, channel, postId, data) {
     if (data.author === editor) {
         keyboard = makeKeyboard('all', data.buttons)
     } else {
-        let permissions = permitted.filter(p => p.person === editor)[0]
+        let permissions = others.filter(p => p.person === editor)[0]
         keyboard = makeKeyboard(permissions, data.buttons)
     }
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
