@@ -376,7 +376,9 @@ async function handleEditSaveDiscard(ctx) {
                 }
             })
         } catch {
-            ctx.reply('Couldn\'t edit the post')
+            ctx.reply('Couldn\'t edit the post, either you haven\'t changed anything or the post has been deleted.')
+            let messageId = ctx.update.callback_query.message.message_id
+            deleteMessage(ctx, chatId, messageId)
             return
         }
         let newMessageIdDb = channel + '/' + postId
