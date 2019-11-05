@@ -1,3 +1,12 @@
+/**
+ * tries to delete messages on telegram and if it fails
+ * tries to edit them with deleted text and if it fails
+ * maybe means the message doesn't exist.
+ * @param {object} ctx: the context from telegraf
+ * @param {string} chatId: the chatId for the deleted message
+ * @param {string | Number}: the message id of the message to delete
+ * @returns {boolean | undefined}: whether the deletion was a success.
+ */
 async function deleteMessage(ctx, chatId, messageId) {
     // try to delete it and if failed, edit it to convey deletion
     let success
