@@ -238,19 +238,21 @@ async function handleDiscardDraft(ctx) {
 async function handleDetails(ctx) {  // details callback
     let [channel, postId] = ctx.update.callback_query.data.split('/')
     let messageDetails = await ctx.posts.get({channel, message_id: postId})
-    if (messageDetails && messageDetails.state === 'available') {
-        let images = JSON.parse(messageDetails.image_ids).watermarked
-        images = images.map(img => {return {type: 'photo', media: img}})
-        // put the caption on the last one
-        images[images.length - 1].caption = messageDetails.caption
-        ctx.replyWithMediaGroup(images, {
-        })
-    } else if (messageDetails.state === 'sold') {
-        ctx.reply('Sorry, item already sold.')
-    } else if (messageDetails.state === 'deleted') {
-        ctx.reply('Sorry, item removed.')
+    if (messageDetails) {
+        if (messageDetails.state === 'available') {
+            let images = JSON.parse(messageDetails.image_ids).watermarked
+            images = images.map(img => {return {type: 'photo', media: img}})
+            // put the caption on the last one
+            images[images.length - 1].caption = messageDetails.caption
+            ctx.replyWithMediaGroup(images, {
+            })
+        } else if (messageDetails.state === 'sold') {
+            ctx.reply('Sorry, item already sold.')
+        } else if (messageDetails.state === 'deleted') {
+            ctx.reply('Sorry, item removed.')
+        }
     } else {
-        ctx.reply(ctx.fallbackReply)
+        ctx.reply('Sorry, item not found.')
     }
 }
 
