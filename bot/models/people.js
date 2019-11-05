@@ -108,6 +108,14 @@ class people extends BaseModel {
                                 AND cp.setting IS TRUE
                             WHERE cp.person = ?`
             values.push(username)
+        } else if (purpose === 'permitted') {
+            query = `SELECT c.username, c.license_expiry
+                            FROM channel_permissions AS cp
+                            INNER JOIN channels AS c
+                                ON cp.channel = c.username
+                                AND cp.setting IS TRUE
+                            WHERE cp.person = ?`
+            values.push(username)
         }
         let channelsInfo = await this.sql(query, values)
         if (licenseValidOn) {
@@ -116,14 +124,14 @@ class people extends BaseModel {
                 .map(ch => ch.username)
             return channels
         }
-        return channelsInfo
+        return channelsInfo.length ? channelsInfo : null
     }
 }
 
 // p = new people()
 // p.getConvo('K1DV5').then(console.log)
 // p.exists('K1DV5').then(console.log)
-// p.getChannels('kid',null,'post').then(console.log)
+// p.getChannels('K1DV5',null,'permitted').then(console.log)
 // p.get('K1DV5', 'removed_message_ids').then(console.log)
 
 module.exports = people
