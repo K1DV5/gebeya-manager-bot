@@ -365,8 +365,6 @@ async function handleEditSaveDiscard(ctx) {
             price: adminData.price,
             caption: adminData.caption
         })
-        // remove the unnecessary messages
-        adminData.removedIds.map(id => { deleteMessage(ctx, chatId, id) })
         // edit the post
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + adminData.destination.replace('/', '-')
         try {
@@ -379,8 +377,12 @@ async function handleEditSaveDiscard(ctx) {
             ctx.reply('Couldn\'t edit the post, either you haven\'t changed anything or the post has been deleted.')
             let messageId = ctx.update.callback_query.message.message_id
             deleteMessage(ctx, chatId, messageId)
+            // remove the unnecessary messages, except the edit origin
+            adminData.removedIds.slice(1).map(id => { deleteMessage(ctx, chatId, id) })
             return
         }
+        // remove the unnecessary messages
+        adminData.removedIds.map(id => { deleteMessage(ctx, chatId, id) })
         let newMessageIdDb = channel + '/' + postId
         let data = {
             caption: adminData.caption,
