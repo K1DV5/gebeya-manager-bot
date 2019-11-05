@@ -156,11 +156,17 @@ async function notifySold(ctx, channel, postId, data) {
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     let caption = '<i>You marked</i> ' + itemLink + ' <b>sold</b>.\n\n' + data.caption
+    // to the others
+    let others = permitted.filter(person => ![editor, data.author].includes(person.person)) // make sure the editor and author are not included
+    if (editor !== data.author) others.push({person: data.author, edit_others: true, delete_others: true})
+    // if neither editor nor the author is admin, notify them as well
+    let channelAdmin = await ctx.channels.get(channel, 'admin')
+    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     let keyboard
     if (data.author === editor) {
         keyboard = makeKeyboard('all', data.buttons)
     } else {
-        let permissions = permitted.filter(p => p.person === editor)[0]
+        let permissions = others.filter(p => p.person === editor)[0]
         keyboard = makeKeyboard(permissions, data.buttons)
     }
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
@@ -168,12 +174,6 @@ async function notifySold(ctx, channel, postId, data) {
         disable_web_page_preview: true,
         ...keyboard
     })
-    // to the others
-    let others = permitted.filter(person => ![editor, data.author].includes(person.person)) // make sure the editor and author are not included
-    if (editor !== data.author) others.push({person: data.author, edit_others: true, delete_others: true})
-    // if neither editor nor the author is admin, notify them as well
-    let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     await clearPrevious(ctx, channel, postId, messageId)
     caption = '@' + editor + ' <i> marked </i> ' + itemLink + ' <i>sold on</i> @' + channel + '.\n\n' + data.caption
     let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
