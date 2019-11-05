@@ -118,18 +118,6 @@ async function notifyEdit(ctx, channel, postId, data) {
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     let caption = '<i>You editted the caption of</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
-    let keyboard
-    if (author === editor) {
-        keyboard = makeKeyboard('all', data.buttons)
-    } else {
-        let permissions = permitted.filter(p => p.person === editor)[0]
-        keyboard = makeKeyboard(permissions, data.buttons)
-    }
-    ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
-        parse_mode: 'html',
-        disable_web_page_preview: true,
-        ...keyboard
-    })
     // to the others
     let others = permitted.filter(person => ![editor, author].includes(person.person)) // make sure the editor and author are not included
     if (editor !== author) others.push({person: author, edit_others: true, delete_others: true})
@@ -137,6 +125,18 @@ async function notifyEdit(ctx, channel, postId, data) {
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (![editor, author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     // clear the previous notifs of the others
+    let keyboard
+    if (author === editor) {
+        keyboard = makeKeyboard('all', data.buttons)
+    } else {
+        let permissions = others.filter(p => p.person === editor)[0]
+        keyboard = makeKeyboard(permissions, data.buttons)
+    }
+    ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
+        parse_mode: 'html',
+        disable_web_page_preview: true,
+        ...keyboard
+    })
     await clearPrevious(ctx, channel, postId, messageId)
     caption = '@' + editor + ' <i>editted the caption of</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
     let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
@@ -194,6 +194,13 @@ async function notifyRepost(ctx, channel, newId, data) {
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     let caption = '<i>You reposted</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
+    // to the others
+    let others = permitted.filter(person => ![editor, data.author].includes(person.person)) // make sure the editor and author are not included
+    if (editor !== data.author) others.push({person: data.author, edit_others: true, delete_others: true})
+    // if neither editor nor the author is admin, notify them as well
+    let channelAdmin = await ctx.channels.get(channel, 'admin')
+    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
+    // the notif data is expected to be already renewed at repost
     let keyboard
     if (data.author === editor) {
         keyboard = makeKeyboard('all', data.buttons)
@@ -206,13 +213,6 @@ async function notifyRepost(ctx, channel, newId, data) {
         disable_web_page_preview: true,
         ...keyboard
     })
-    // to the others
-    let others = permitted.filter(person => ![editor, data.author].includes(person.person)) // make sure the editor and author are not included
-    if (editor !== data.author) others.push({person: data.author, edit_others: true, delete_others: true})
-    // if neither editor nor the author is admin, notify them as well
-    let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    // the notif data is expected to be already renewed at repost
     await clearPrevious(ctx, channel, newId, messageId)
     caption = '@' + editor + ' <i>reposted</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
     let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
@@ -230,6 +230,10 @@ async function notifyDelete(ctx, channel, postId, data) {
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     let caption = data.text + '\n<i>from</i> @' + channel + '\n\n' + data.caption
+    // to the others
+    let others = permitted.filter(person => person.person !== editor) // make sure the editor is not included
+    let channelAdmin = await ctx.channels.get(channel, 'admin')
+    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     let keyboard
     if (data.author === editor) {
         keyboard = makeKeyboard('all', data.buttons)
@@ -242,10 +246,6 @@ async function notifyDelete(ctx, channel, postId, data) {
         disable_web_page_preview: true,
         ...keyboard
     })
-    // to the others
-    let others = permitted.filter(person => person.person !== editor) // make sure the editor is not included
-    let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
     await clearPrevious(ctx, channel, postId, messageId)
     caption = data.text + '\n<i>by</i> ' + '@' + editor + ' <i>from</i> @' + channel
     let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
