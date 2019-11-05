@@ -30,7 +30,7 @@ const settingSpectficParams = {
     logo: {
         finalConvo: 'settings.logo.document',
         introText: 'Which channel\'s logo do you want to change?',
-        finalText: (ctx, channel) => 'You will be changing the logo for @' + channel + ', send the logo AS A FILE because Telegam will remove the transparency if you send it as a photo.'
+        finalText: (ctx, channel) => 'You will be changing the logo for @' + channel + '. Send the logo as a file (recommended to preserve the transparency) or as a photo.'
     },
     caption_template: {
         finalConvo: 'settings.caption_template.text',
@@ -171,26 +171,32 @@ async function handleSettingTextDescBullet(ctx) {
 
 async function handleSettingLogoDoc(ctx) {
     let username = ctx.from.username
-    let doc = ctx.update.message.document
-    let [type, ext] = doc.mime_type.split('/')
-    if (type === 'image') {
-        try {
-            let docProps = await ctx.telegram.getFile(ctx.update.message.document.file_id)
-            let documentUrl = `https://api.telegram.org/file/bot${ctx.telegram.token}/${docProps.file_path}`
-            let channel = await ctx.people.get(username, 'to_update')
-            let filePath = path.join(ctx.imagesDir, username, 'logo-' + channel + '.' + ext)
-            await downloadFile(documentUrl, filePath)
-            ctx.reply('Done, this change will take effect the next time you post an item on @' + channel + '.')
-            ctx.people.set(username, {conversation: null})
-        } catch(err) {
-            if (err.code === 'ECONNREFUSED') {
-                ctx.reply('Sorry, a connection problem occured. Send it again.')
-            } else {
-                throw err
-            }
+    let fileProps
+    if (ctx.updateSubTypes.includes('document')) {
+        let doc = ctx.update.message.document
+        let [type] = doc.mime_type.split('/')
+        if (type !== 'image') {
+            ctx.reply('This is not an image. Please send an image file.')
+            return
         }
-    } else {
-        ctx.reply('This is not an image. Please send an image file.')
+        fileProps = await ctx.telegram.getFile(ctx.update.message.document.file_id)
+    } else if (ctx.updateSubTypes.includes('photo')) {
+        let photo = ctx.update.message.photo
+        fileProps = await ctx.telegram.getFile(photo.slice(-1)[0].file_id)
+    }
+    try {
+        let documentUrl = `https://api.telegram.org/file/bot${ctx.telegram.token}/${fileProps.file_path}`
+        let channel = await ctx.people.get(username, 'to_update')
+        let filePath = path.join(ctx.logoDir, channel)
+        await downloadFile(documentUrl, filePath)
+        ctx.reply('Done, this change will take effect the next time you post an item on @' + channel + '.')
+        ctx.people.set(username, {conversation: null})
+    } catch(err) {
+        if (err.code === 'ECONNREFUSED') {
+            ctx.reply('Sorry, a connection problem occured. Send it again.')
+        } else {
+            throw err
+        }
     }
 }
 

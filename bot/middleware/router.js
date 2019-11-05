@@ -110,7 +110,7 @@ const convoHandlers = {
     },
 
     'settings.logo.document': ctx => {
-        if (ctx.updateSubTypes.includes('document')) {
+        if (ctx.updateSubTypes.includes('document') || ctx.updateSubTypes.includes('photo')) {
             settings.handleSettingLogoDoc(ctx)
         } else {
             ctx.reply('Please send an image FILE for the logo')

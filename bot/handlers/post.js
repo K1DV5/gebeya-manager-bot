@@ -92,14 +92,23 @@ async function handlePhotoStagePhotos(ctx) {
     let username = ctx.from.username
     let messageId = ctx.update.message.message_id
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
-    let newRemoved = JSON.stringify([...removed, messageId])
-    await ctx.people.set(username, {removed_message_ids: newRemoved})
+    let newRemoved = [...removed, messageId]
     let imagesDir = path.join(ctx.imagesDir, username, 'draft-images')
     let photo = ctx.update.message.photo
-    let fileProps = await ctx.telegram.getFile(photo[photo.length-1].file_id)
-    let filePath = path.join(imagesDir, path.basename(fileProps.file_path))
-    let url = `https://api.telegram.org/file/bot${ctx.telegram.token}/${fileProps.file_path}`
-    await downloadFile(url, filePath)
+    try {
+        let fileProps = await ctx.telegram.getFile(photo[photo.length-1].file_id)
+        let filePath = path.join(imagesDir, path.basename(fileProps.file_path))
+        let url = `https://api.telegram.org/file/bot${ctx.telegram.token}/${fileProps.file_path}`
+        await downloadFile(url, filePath)
+    } catch (err) {
+        if (err.code === 'ECONNREFUSED') {
+            let message = await ctx.reply('There was a connection problem, please try again')
+            newRemoved.push(message.message_id)
+        } else {
+            throw err
+        }
+    }
+    await ctx.people.set(username, {removed_message_ids: JSON.stringify(newRemoved)})
 }
 
 async function handlePhotoStageEnd(ctx) {
@@ -107,12 +116,12 @@ async function handlePhotoStageEnd(ctx) {
     let messageId = ctx.update.message.message_id
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let channel = await ctx.people.get(username, 'to_update')
-    let logoImg = path.join(ctx.imagesDir, username, 'logo-' + channel + '.png')
+    let logoImg = path.join(ctx.logoDir, channel)
     let draftCollage = path.join(ctx.imagesDir, username, 'draft-collage.jpg')
     let imagesDir = path.join(ctx.imagesDir, username, 'draft-images')
     try { // make sure there is at least one photo
         let photos = await fs.promises.readdir(imagesDir) // dir might not exist
-        let stat = await fs.promises.stat(path.join(imagesDir, photos[0] || '0')) // no file may exist
+        await fs.promises.stat(path.join(imagesDir, photos[0] || '0')) // no file may exist
     } catch (err) {
         if (err.code === 'ENOENT') {
             ctx.reply('You have not sent any photos. Please send some and then /end, or /cancel the post.')

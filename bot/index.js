@@ -42,7 +42,9 @@ bot.context.people = new peopleModel()
 bot.context.channels = new channelsModel()
 bot.context.posts = new postsModel()
 // where the image manipulations will occur
-bot.context.imagesDir = path.join(__dirname, '../images-staging')
+bot.context.imagesDir = path.join(__dirname, '../images')
+// the logo dir
+bot.context.logoDir = path.join(bot.context.imagesDir, '.channels-logo')
 // default reply for unknown intent
 bot.context.fallbackReply = 'Error, don\'t know what you want to do. Maybe you need /help'
 // the sys admins
@@ -66,27 +68,8 @@ bot.context.defaultKeyboard = {
 // do actual work
 bot.use(router)
 
-let tried = 0
-let trials = 10
-function start(err) {
-    if (!err || ['ECONNREFUSED', 'ETIMEDOUT'].includes(err.code) && tried < trials) {
-        bot.launch().then(() => console.log('bot listening...')).catch((err)=>{
-            if (['ECONNREFUSED', 'ETIMEDOUT'].includes(err.code)) {
-                console.log(err.code, 'retrying...')
-                start()
-                tried++
-            } else {
-                throw err
-            }
-        })
-    } else {
-        throw err
-    }
-}
-
 if (os.hostname() === 'K1DV5') {
-    bot.catch(start)
-    start()
+    bot.launch().then(() => console.log('bot listening...'))
 } else {
     // set the info
     bot.context.botInfo = {username: process.env.BOT_USERNAME} // missing when using webhook
