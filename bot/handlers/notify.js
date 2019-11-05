@@ -73,7 +73,7 @@ async function notifyPost(ctx, channel, postId, data) { // send post notificatio
     // to the author
     let addr = channel + '/' + postId
     let newLink = '<a href="https://t.me/' + addr + '">item</a>'
-    let caption = '<i>You posted a new</i> ' + newLink + ' <on> @' + channel + '\n\n' + data.caption
+    let caption = '<i>You posted a new</i> ' + newLink + ' <i>on</i> @' + channel + '\n\n' + data.caption
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
@@ -108,7 +108,7 @@ async function notifyEdit(ctx, channel, postId, data) {
     // edit the editor message
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
-    let caption = '<i>You editted the caption of</i> ' + itemLink + '.\n\n' + data.caption + interestedText
+    let caption = '<i>You editted the caption of</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
     let keyboard
     if (author === editor) {
         keyboard = makeKeyboard('all', data.buttons)
