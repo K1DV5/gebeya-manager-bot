@@ -5,7 +5,6 @@
  * @param {object} ctx: the context from telegraf
  * @param {string} chatId: the chatId for the deleted message
  * @param {string | Number}: the message id of the message to delete
- * @returns {boolean | undefined}: whether the deletion was a success.
  */
 async function deleteMessage(ctx, chatId, messageId) {
     // try to delete it and if failed, edit it to convey deletion
@@ -51,23 +50,6 @@ function makeKeyboard(permissions, buttons) {
     return keyboard
 }
 
-async function sendToMany(ctx, permissions, buttons, imageId, caption) {
-    // permissions: [{username, edit_others, delete_others}, ...]
-    let messageIds = {}
-    await Promise.all(permissions.map(async perm => {
-        let chatId = await ctx.people.get(perm.person, 'chat_id')
-        if (chatId) {
-            let message = await ctx.telegram.sendPhoto(chatId, imageId, {
-                caption,
-                parse_mode: 'html',
-                ...makeKeyboard(perm, buttons)
-            })
-            messageIds[perm.person] = message.message_id
-        }
-    }))
-    return messageIds
-}
-
 async function clearPrevious(ctx, channel, postId, excludeId) {
     let previous = await ctx.posts.getNotif(channel, postId)
     for (let prev of previous.filter(p => p.message_id != excludeId)) {
@@ -77,30 +59,95 @@ async function clearPrevious(ctx, channel, postId, excludeId) {
     }
 }
 
-async function notifyPost(ctx, channel, postId, data) { // send post notifications
-    let author = ctx.from.username
-    // to the author
-    let addr = channel + '/' + postId
-    let newLink = '<a href="https://t.me/' + addr + '">item</a>'
-    let caption = '<i>You posted a new</i> ' + newLink + ' <i>on</i> @' + channel + '\n\n' + data.caption
+/**
+ * prepares the people to send messages to
+ * @param {object} ctx: the context
+ * @param {string} channel: the channel
+ * @param {string[]} fullPerms: people with full permissions
+ * @returns {Promise<Array<Object>>} others: the prepared
+ */
+async function preparePerms(ctx, channel, fullPerms) {
+    let perms = await ctx.channels.getPermitted(channel)
+    // change the permissions to full for some
+    fullPerms = Array.isArray(fullPerms) ? fullPerms : [fullPerms]
+    perms = [...perms.filter(p => !fullPerms.includes(p.person)), 
+        fullPerms.map(p => {return {person: p, edit_others: true, delete_others: true}})
+    ]
+    // include the channel admin with full permissions
+    let channelAdmin = await ctx.channels.get(channel, 'admin')
+    others.push({person: channelAdmin, edit_others: true, delete_others: true})
+    return others
+}
+
+/**
+ * Sends notifs to the people with permissions
+ * @param {Object} ctx the context
+ * @param {Object} post the post to notify about, and to clear previous notifs, with exclude prop
+     * @param {string} post.channel the channel
+     * @param {string} post.postId the post id
+     * @param {bool} post.dontClear whther the previous notifs for this post should be cleared
+     * @param {string} post.clearExclude the message id of the previous notifs not to clear 
+ * @param {Object[]} perms people with their permissions to send notifs to
+ * @param {Object} buttons the buttons with permission classification
+     * @param {Array<Object>} buttons.edit the buttons given to those with edit permissions
+     * @param {Array<Object>} buttons.delete the buttons given to those with delete permissions
+ * @param {string} imageId the image id in the message
+ * @param {string} caption the caption in the message
+ * @param {string[]} exclude the usernames of the people to exclude from notifying
+ */
+async function sendNotifs(ctx, post, perms, buttons, imageId, caption, exclude) {
+    // permissions: [{username, edit_others, delete_others}, ...]
+    if (!post.dontClear) { // means do clear
+        clearPrevious(ctx, post.channel, post.postId, post.clearExclude)
+    }
+    let notifs = []
+    await Promise.all(perms.filter(p => !exclude.includes(p.person)).map(async perm => {
+        let chatId = await ctx.people.get(perm.person, 'chat_id')
+        if (chatId) {
+            let message = await ctx.telegram.sendPhoto(chatId, imageId, {
+                caption,
+                parse_mode: 'html',
+                ...makeKeyboard(perm, buttons)
+            })
+            notifs.push({
+                person: perm.person,
+                channel: post.channel,
+                id: message.message_id,
+                post_id: post.postId
+            })
+        }
+    }))
+    return notifs
+}
+
+function sendNotifSelf(ctx, caption, buttons, author, permissions) {
+    let self = ctx.from.username
     let chatId = ctx.update.callback_query.from.id
     let messageId = ctx.update.callback_query.message.message_id
+    let keyboard
+    if (author === self) {
+        keyboard = makeKeyboard('all', buttons)
+    } else {
+        keyboard = makeKeyboard(permissions, buttons)
+    }
     ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
         parse_mode: 'html',
         disable_web_page_preview: true,
-        ...makeKeyboard('all', data.buttons)
+        ...keyboard
     })
-    // to the others
-    let others = await ctx.channels.getPermitted(channel)
-    others = others.filter(person => person.person !== author) // make sure the author is not included
-    // if author is not admin, notify them as well
-    let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (channelAdmin !== author) others.push({person: channelAdmin, edit_others: true, delete_others: true})
+    return messageId
+}
+
+async function notifyPost(ctx, channel, postId, data) { // send post notifications
+    let author = ctx.from.username
+    // to the author
+    let newLink = '<a href="https://t.me/' + channel + '/' + postId + '">item</a>'
+    let caption = '<i>You posted a new</i> ' + newLink + ' <i>on</i> @' + channel + '\n\n' + data.caption
+    let messageId = sendNotifSelf(ctx, caption, data.buttons, author) // permissions not needed
     caption = '<i>There is a new post</i> ' + newLink + ' <i>by</i> @' + author + ' <i>on</i> @' + channel + '.\n\n' + data.caption
-    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
-    let notifs = others
-        .filter(o => messageIds[o.person])
-        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
+    // to the others
+    let others = await preparePerms(ctx, channel, author)
+    let notifs = await sendNotifs(ctx, {channel, postId, dontClear: true}, others, data.buttons, data.image, caption, [author])
     notifs.push({person: author, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
@@ -109,77 +156,31 @@ async function notifyPost(ctx, channel, postId, data) { // send post notificatio
 async function notifyEdit(ctx, channel, postId, data) {
     let editor = ctx.from.username
     let author = await ctx.posts.get({channel, message_id: postId}, 'author') // who first posted it
-    let permitted = await ctx.channels.getPermitted(channel)
-    let addr = channel + '/' + postId
     let customers = JSON.parse(await ctx.posts.get({channel, message_id: postId}, 'interested'))
     let interestedText = customers.length ? '\n\nInterested customers are:\n' + customers.map(cust => '\u2022 <a href="tg://user?id=' + cust.id + '">' + cust.name + '</a>').join('\n') : ''
-    let itemLink = '<a href="https://t.me/' + addr + '">this item</a>'
+    let itemLink = '<a href="https://t.me/' + channel + '/' + postId + '">this item</a>'
     // edit the editor message
-    let chatId = ctx.update.callback_query.from.id
-    let messageId = ctx.update.callback_query.message.message_id
     let caption = '<i>You editted the caption of</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
-    // to the others
-    let others = permitted.filter(person => ![editor, author].includes(person.person)) // make sure the editor and author are not included
-    if (editor !== author) others.push({person: author, edit_others: true, delete_others: true})
-    // if neither editor nor the author is admin, notify them as well
-    let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (![editor, author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    // clear the previous notifs of the others
-    let keyboard
-    if (author === editor) {
-        keyboard = makeKeyboard('all', data.buttons)
-    } else {
-        let permissions = others.filter(p => p.person === editor)[0]
-        keyboard = makeKeyboard(permissions, data.buttons)
-    }
-    ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
-        parse_mode: 'html',
-        disable_web_page_preview: true,
-        ...keyboard
-    })
-    await clearPrevious(ctx, channel, postId, messageId)
+    let perms = await preparePerms(ctx, channel, author)
+    let selfPerms = perms.filter(p => p.person === editor)[0]
+    let messageId = sendNotifSelf(ctx, caption, data.buttons, author, selfPerms)
     caption = '@' + editor + ' <i>editted the caption of</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
-    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
-    let notifs = others
-        .filter(o => messageIds[o.person])
-        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
+    let notifs = await sendNotifs(ctx, {channel, postId, clearExclude: messageId}, perms, data.buttons, data.image, caption, [editor])
     notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
 
 async function notifySold(ctx, channel, postId, data) {
     let editor = ctx.from.username
-    let permitted = await ctx.channels.getPermitted(channel)
-    let addr = channel + '/' + postId
-    let itemLink = '<a href="https://t.me/' + addr + '">this item</a>'
+    let author = await ctx.posts.get({channel, message_id: postId}, 'author') // who first posted it
+    let itemLink = '<a href="https://t.me/' + channel + '/' + postId + '">this item</a>'
     // edit the editor message
-    let chatId = ctx.update.callback_query.from.id
-    let messageId = ctx.update.callback_query.message.message_id
     let caption = '<i>You marked</i> ' + itemLink + ' <b>sold</b>.\n\n' + data.caption
-    // to the others
-    let others = permitted.filter(person => ![editor, data.author].includes(person.person)) // make sure the editor and author are not included
-    if (editor !== data.author) others.push({person: data.author, edit_others: true, delete_others: true})
-    // if neither editor nor the author is admin, notify them as well
-    let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    let keyboard
-    if (data.author === editor) {
-        keyboard = makeKeyboard('all', data.buttons)
-    } else {
-        let permissions = others.filter(p => p.person === editor)[0]
-        keyboard = makeKeyboard(permissions, data.buttons)
-    }
-    ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
-        parse_mode: 'html',
-        disable_web_page_preview: true,
-        ...keyboard
-    })
-    await clearPrevious(ctx, channel, postId, messageId)
+    let perms = await preparePerms(ctx, channel, author)
+    let selfPerms = perms.filter(p => p.person === editor)[0]
+    let messageId = sendNotifSelf(ctx, caption, data.buttons, author, selfPerms)
     caption = '@' + editor + ' <i> marked </i> ' + itemLink + ' <i>sold on</i> @' + channel + '.\n\n' + data.caption
-    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
-    let notifs = others
-        .filter(o => messageIds[o.person])
-        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
+    let notifs = await sendNotifs(ctx, {channel, postId, clearExclude: messageId}, perms, data.buttons, data.image, caption, [editor])
     notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 
@@ -187,71 +188,30 @@ async function notifySold(ctx, channel, postId, data) {
 
 async function notifyRepost(ctx, channel, newId, data) {
     let editor = ctx.from.username
-    let permitted = await ctx.channels.getPermitted(channel)
-    let addr = channel + '/' + newId
-    let itemLink = '<a href="https://t.me/' + addr + '">this item</a>'
+    let author = await ctx.posts.get({channel, message_id: postId}, 'author') // who first posted it
+    let itemLink = '<a href="https://t.me/' + channel + '/' + postId + '">this item</a>'
     // edit the editor message
-    let chatId = ctx.update.callback_query.from.id
-    let messageId = ctx.update.callback_query.message.message_id
     let caption = '<i>You reposted</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
     // to the others
-    let others = permitted.filter(person => ![editor, data.author].includes(person.person)) // make sure the editor and author are not included
-    if (editor !== data.author) others.push({person: data.author, edit_others: true, delete_others: true})
-    // if neither editor nor the author is admin, notify them as well
-    let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    // the notif data is expected to be already renewed at repost
-    let keyboard
-    if (data.author === editor) {
-        keyboard = makeKeyboard('all', data.buttons)
-    } else {
-        let permissions = others.filter(p => p.person === editor)[0]
-        keyboard = makeKeyboard(permissions, data.buttons)
-    }
-    ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
-        parse_mode: 'html',
-        disable_web_page_preview: true,
-        ...keyboard
-    })
-    await clearPrevious(ctx, channel, newId, messageId)
+    let perms = await preparePerms(ctx, channel, author)
+    let selfPerms = perms.filter(p => p.person === editor)[0]
+    let messageId = sendNotifSelf(ctx, caption, data.buttons, author, selfPerms)
     caption = '@' + editor + ' <i>reposted</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
-    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
-    let notifs = others
-        .filter(o => messageIds[o.person])
-        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: newId}})
+    let notifs = await sendNotifs(ctx, {channel, postId, clearExclude: messageId}, perms, data.buttons, data.image, caption, [editor])
     notifs.push({person: editor, channel, id: messageId, post_id: newId})
     await ctx.posts.setNotif(notifs)
 }
 
 async function notifyDelete(ctx, channel, postId, data) {
     let editor = ctx.from.username
-    let permitted = await ctx.channels.getPermitted(channel)
+    let author = await ctx.posts.get({channel, message_id: postId}, 'author') // who first posted it
     // edit the editor message
-    let chatId = ctx.update.callback_query.from.id
-    let messageId = ctx.update.callback_query.message.message_id
     let caption = data.text + '\n<i>from</i> @' + channel + '\n\n' + data.caption
-    // to the others
-    let others = permitted.filter(person => person.person !== editor) // make sure the editor is not included
-    let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (![editor, data.author].includes(channelAdmin)) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    let keyboard
-    if (data.author === editor) {
-        keyboard = makeKeyboard('all', data.buttons)
-    } else {
-        let permissions = others.filter(p => p.person === editor)[0]
-        keyboard = makeKeyboard(permissions, data.buttons)
-    }
-    ctx.telegram.editMessageCaption(chatId, messageId, undefined, caption, {
-        parse_mode: 'html',
-        disable_web_page_preview: true,
-        ...keyboard
-    })
-    await clearPrevious(ctx, channel, postId, messageId)
+    let perms = await preparePerms(ctx, channel, author)
+    let selfPerms = perms.filter(p => p.person === editor)[0]
+    let messageId = sendNotifSelf(ctx, caption, data.buttons, author, selfPerms)
     caption = data.text + '\n<i>by</i> ' + '@' + editor + ' <i>from</i> @' + channel
-    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
-    let notifs = others
-        .filter(o => messageIds[o.person])
-        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
+    let notifs = await sendNotifs(ctx, {channel, postId, clearExclude: messageId}, perms, data.buttons, data.image, caption, [editor])
     notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
@@ -271,18 +231,10 @@ async function notifyBuy(ctx, channel, postId, data) {
         reply_markup: { inline_keyboard: [data.buttons.customer] }
     })
     // to stakeholders
-    let permitted = await ctx.channels.getPermitted(channel)
-    let others = permitted.filter(person => person.person !== data.author) // make sure the editor and author are not included
-    others.push({person: data.author, edit_others: true, delete_others: true})
-    // if editor is not admin, notify them as well
-    let channelAdmin = await ctx.channels.get(channel, 'admin')
-    if (channelAdmin !== data.author) others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    clearPrevious(ctx, channel, postId) // no exclude
+    let author = await ctx.posts.get({channel, message_id: postId}, 'author') // who first posted it
+    let perms = await preparePerms(ctx, channel, author)
     caption = '<i>You have a new customer for</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
-    let messageIds = await sendToMany(ctx, others, data.buttons, data.image, caption)
-    let notifs = others
-        .filter(o => messageIds[o.person])
-        .map(o => {return {person: o.person, channel, id: messageIds[o.person], post_id: postId}})
+    let notifs = await sendNotifs(ctx, {channel, postId}, perms, data.buttons, data.image, caption)
     await ctx.posts.setNotif(notifs)
 }
 
