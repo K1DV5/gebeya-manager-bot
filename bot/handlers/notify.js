@@ -7,6 +7,7 @@
  * @param {string | Number}: the message id of the message to delete
  */
 async function deleteMessage(ctx, chatId, messageId) {
+    'use strict';
     // try to delete it and if failed, edit it to convey deletion
     let success
     try {
@@ -50,15 +51,6 @@ function makeKeyboard(permissions, buttons) {
     return keyboard
 }
 
-async function clearPrevious(ctx, channel, postId, excludeId) {
-    let previous = await ctx.posts.getNotif(channel, postId)
-    for (let prev of previous.filter(p => p.message_id != excludeId)) {
-        let chatId = await ctx.people.get(prev.person, 'chat_id')
-        // delete the previous one
-        await deleteMessage(ctx, chatId, prev.message_id)
-    }
-}
-
 /**
  * prepares the people to send messages to
  * @param {object} ctx: the context
@@ -70,23 +62,23 @@ async function preparePerms(ctx, channel, fullPerms) {
     let perms = await ctx.channels.getPermitted(channel)
     // change the permissions to full for some
     fullPerms = Array.isArray(fullPerms) ? fullPerms : [fullPerms]
-    perms = [...perms.filter(p => !fullPerms.includes(p.person)), 
-        fullPerms.map(p => {return {person: p, edit_others: true, delete_others: true}})
-    ]
     // include the channel admin with full permissions
     let channelAdmin = await ctx.channels.get(channel, 'admin')
-    others.push({person: channelAdmin, edit_others: true, delete_others: true})
-    return others
+    if (!fullPerms.includes(channelAdmin)) fullPerms.push(channelAdmin)
+    perms = [
+        ...perms.filter(p => !fullPerms.includes(p.person)), 
+        ...fullPerms.map(p => {return {
+            person: p, edit_others: true, delete_others: true
+        }})
+    ]
+    return perms
 }
 
 /**
  * Sends notifs to the people with permissions
  * @param {Object} ctx the context
- * @param {Object} post the post to notify about, and to clear previous notifs, with exclude prop
-     * @param {string} post.channel the channel
-     * @param {string} post.postId the post id
-     * @param {bool} post.dontClear whther the previous notifs for this post should be cleared
-     * @param {string} post.clearExclude the message id of the previous notifs not to clear 
+ * @param {string} channel the channel
+ * @param {string} postId the post id
  * @param {Object[]} perms people with their permissions to send notifs to
  * @param {Object} buttons the buttons with permission classification
      * @param {Array<Object>} buttons.edit the buttons given to those with edit permissions
@@ -95,15 +87,20 @@ async function preparePerms(ctx, channel, fullPerms) {
  * @param {string} caption the caption in the message
  * @param {string[]} exclude the usernames of the people to exclude from notifying
  */
-async function sendNotifs(ctx, post, perms, buttons, imageId, caption, exclude) {
-    // permissions: [{username, edit_others, delete_others}, ...]
-    if (!post.dontClear) { // means do clear
-        clearPrevious(ctx, post.channel, post.postId, post.clearExclude)
-    }
+async function sendNotifs(ctx, channel, postId, perms, buttons, imageId, caption, exclude) {
+    exclude = Array.isArray(exclude) ? exclude : [exclude]
+    // the previously sent notifs by person
+    let previous = (await ctx.posts.getNotif(channel, postId)).reduce((acc, curr) => {
+        acc[curr.person] = curr.message_id
+        return acc
+    }, {})
     let notifs = []
     await Promise.all(perms.filter(p => !exclude.includes(p.person)).map(async perm => {
         let chatId = await ctx.people.get(perm.person, 'chat_id')
         if (chatId) {
+            // delete the previous
+            if (previous[perm.person]) deleteMessage(ctx, chatId, previous[perm.person])
+            // and send a new one
             let message = await ctx.telegram.sendPhoto(chatId, imageId, {
                 caption,
                 parse_mode: 'html',
@@ -111,9 +108,9 @@ async function sendNotifs(ctx, post, perms, buttons, imageId, caption, exclude) 
             })
             notifs.push({
                 person: perm.person,
-                channel: post.channel,
+                channel: channel,
                 id: message.message_id,
-                post_id: post.postId
+                post_id: postId
             })
         }
     }))
@@ -147,7 +144,7 @@ async function notifyPost(ctx, channel, postId, data) { // send post notificatio
     caption = '<i>There is a new post</i> ' + newLink + ' <i>by</i> @' + author + ' <i>on</i> @' + channel + '.\n\n' + data.caption
     // to the others
     let others = await preparePerms(ctx, channel, author)
-    let notifs = await sendNotifs(ctx, {channel, postId, dontClear: true}, others, data.buttons, data.image, caption, [author])
+    let notifs = await sendNotifs(ctx, channel, postId, others, data.buttons, data.image, caption, author)
     notifs.push({person: author, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
@@ -165,7 +162,7 @@ async function notifyEdit(ctx, channel, postId, data) {
     let selfPerms = perms.filter(p => p.person === editor)[0]
     let messageId = sendNotifSelf(ctx, caption, data.buttons, author, selfPerms)
     caption = '@' + editor + ' <i>editted the caption of</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
-    let notifs = await sendNotifs(ctx, {channel, postId, clearExclude: messageId}, perms, data.buttons, data.image, caption, [editor])
+    let notifs = await sendNotifs(ctx, channel, postId, perms, data.buttons, data.image, caption, editor)
     notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
@@ -180,7 +177,7 @@ async function notifySold(ctx, channel, postId, data) {
     let selfPerms = perms.filter(p => p.person === editor)[0]
     let messageId = sendNotifSelf(ctx, caption, data.buttons, author, selfPerms)
     caption = '@' + editor + ' <i> marked </i> ' + itemLink + ' <i>sold on</i> @' + channel + '.\n\n' + data.caption
-    let notifs = await sendNotifs(ctx, {channel, postId, clearExclude: messageId}, perms, data.buttons, data.image, caption, [editor])
+    let notifs = await sendNotifs(ctx, channel, postId, perms, data.buttons, data.image, caption, editor)
     notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 
@@ -188,8 +185,8 @@ async function notifySold(ctx, channel, postId, data) {
 
 async function notifyRepost(ctx, channel, newId, data) {
     let editor = ctx.from.username
-    let author = await ctx.posts.get({channel, message_id: postId}, 'author') // who first posted it
-    let itemLink = '<a href="https://t.me/' + channel + '/' + postId + '">this item</a>'
+    let author = await ctx.posts.get({channel, message_id: newId}, 'author') // who first posted it
+    let itemLink = '<a href="https://t.me/' + channel + '/' + newId + '">this item</a>'
     // edit the editor message
     let caption = '<i>You reposted</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
     // to the others
@@ -197,7 +194,7 @@ async function notifyRepost(ctx, channel, newId, data) {
     let selfPerms = perms.filter(p => p.person === editor)[0]
     let messageId = sendNotifSelf(ctx, caption, data.buttons, author, selfPerms)
     caption = '@' + editor + ' <i>reposted</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption
-    let notifs = await sendNotifs(ctx, {channel, postId, clearExclude: messageId}, perms, data.buttons, data.image, caption, [editor])
+    let notifs = await sendNotifs(ctx, channel, newId, perms, data.buttons, data.image, caption, editor)
     notifs.push({person: editor, channel, id: messageId, post_id: newId})
     await ctx.posts.setNotif(notifs)
 }
@@ -211,7 +208,7 @@ async function notifyDelete(ctx, channel, postId, data) {
     let selfPerms = perms.filter(p => p.person === editor)[0]
     let messageId = sendNotifSelf(ctx, caption, data.buttons, author, selfPerms)
     caption = data.text + '\n<i>by</i> ' + '@' + editor + ' <i>from</i> @' + channel
-    let notifs = await sendNotifs(ctx, {channel, postId, clearExclude: messageId}, perms, data.buttons, data.image, caption, [editor])
+    let notifs = await sendNotifs(ctx, channel, postId, perms, data.buttons, data.image, caption, editor)
     notifs.push({person: editor, channel, id: messageId, post_id: postId})
     await ctx.posts.setNotif(notifs)
 }
@@ -234,7 +231,7 @@ async function notifyBuy(ctx, channel, postId, data) {
     let author = await ctx.posts.get({channel, message_id: postId}, 'author') // who first posted it
     let perms = await preparePerms(ctx, channel, author)
     caption = '<i>You have a new customer for</i> ' + itemLink + ' <i>on</i> @' + channel + '.\n\n' + data.caption + interestedText
-    let notifs = await sendNotifs(ctx, {channel, postId}, perms, data.buttons, data.image, caption)
+    let notifs = await sendNotifs(ctx, channel, postId, perms, data.buttons, data.image, caption)
     await ctx.posts.setNotif(notifs)
 }
 

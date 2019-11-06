@@ -75,11 +75,11 @@ const convoHandlers = {
         }
     },
 
-    'post.photo': ctx => {
+    'post.photo': async ctx => {
         if (ctx.updateSubTypes.includes('photo')) {
-            post.handlePhotoStagePhotos(ctx)
+            await post.handlePhotoStagePhotos(ctx)
         } else if (ctx.updateSubTypes.includes('text') && ctx.message.text === '/end') {
-            post.handlePhotoStageEnd(ctx)
+            await post.handlePhotoStageEnd(ctx)
         } else {
             ctx.reply('Please send some photos for the post and finally send /end, or maybe look at the /help.')
         }
@@ -237,7 +237,7 @@ async function router(ctx) {
         let convo = await ctx.people.getConvo(username)
         if (Object.keys(convoHandlers).includes(String(convo))) {
             let handler = convoHandlers[convo]
-            handler(ctx)
+            await handler(ctx)
             return 1
         }
     }

@@ -6,9 +6,14 @@ test routes
     - [X] description  
     - [X] price  
     - [X] photo  
-    - [X] /end  
     - [X] post  
     - [X] discard  
+    - [X] /end  
+
+- [X] post, repost
+    - [X] delete
+    - [X] mark sold
+    - [X] edit caption
 
 - [X] buy after post
     - [X] :customer 
@@ -23,8 +28,8 @@ test routes
     - [X] title 
     - [X] description 
     - [X] price 
-    - [X] save 
     - [X] discard 
+    - [X] save 
 
 - [X] buy after edit 
     - [X] :customer 
@@ -36,8 +41,11 @@ test routes
         - [X] mark sold
 
 - [X] mark sold
-  - [X] repost
-  - [X] delete
+    - [X] repost
+    - [X] delete
+
+- [X] delete
+    - [X] repost
 
 - [X] /settings 
     - [X] logo 

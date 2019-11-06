@@ -439,7 +439,7 @@ async function handleSold(ctx) {
             let data = {
                 caption: soldText,
                 author: post.author,
-                image: post.image_ids,
+                image: JSON.parse(post.image_ids).collage,
                 buttons: {
                     // classified on permissions basis
                     edit: [{text: 'Repost', callback_data: 'repost:' + messageIdDb}],
