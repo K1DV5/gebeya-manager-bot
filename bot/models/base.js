@@ -1,23 +1,13 @@
 const os = require('os')
 const mysql = require('mysql')
 
-let connection
-if (os.hostname() === 'K1DV5') {
-    connection = mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        database: 'k1dv5com_tg_gebeya',
-        charset: 'utf8mb4_unicode_ci'
-    })
-} else {
-    connection = mysql.createConnection({
-        host: 'localhost',
-        user: 'gebeyama_gebeya',
-        password: process.env.DB_PASS,
-        database: 'gebeyama_gebeya',
-        charset: 'utf8mb4_unicode_ci'
-    })
-}
+let connection = mysql.createConnection({
+    host: 'localhost',
+    user: process.env.DB_USER,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASS,
+    charset: 'utf8mb4_unicode_ci'
+})
 
 connection.connect()
 
