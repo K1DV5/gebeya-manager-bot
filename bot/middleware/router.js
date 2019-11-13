@@ -18,6 +18,7 @@ const callbackHandlers = {
     'edit_after:': post.handleEditSaveDiscard, // after some changs are made, save or discard
     'delete:': post.handleDeletePost,
     'settings:': settings.handleSettingIntro,
+    'settings.dsc_mod:': settings.handleSettingDescriptionMode
 }
 
 const commandHandlers = {

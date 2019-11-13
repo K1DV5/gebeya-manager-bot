@@ -10,7 +10,8 @@ class channels extends BaseModel {
             'caption_template',
             'sold_template',
             'license_expiry',
-            'description_bullet'
+            'description_bullet',
+            'description_is_bullet'
         ]
         super(table, cols)
         this.permTable = 'channel_permissions'

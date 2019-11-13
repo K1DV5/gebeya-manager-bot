@@ -17,7 +17,10 @@ async function handleSettings(ctx) {
                         { text: 'Sold template', callback_data: 'settings:sold_template' },
                         { text: 'Description bullet', callback_data: 'settings:description_bullet' },
                     ],
-                    [{ text: 'Update permissions', callback_data: 'settings:channel_permissions' }]
+                    [
+                        { text: 'Description mode', callback_data: 'settings:description_mode' },
+                        { text: 'Update permissions', callback_data: 'settings:channel_permissions' },
+                    ]
                 ]
             }
         })
@@ -30,7 +33,9 @@ const settingSpectficParams = {
     logo: {
         finalConvo: 'settings.logo.document',
         introText: 'Which channel\'s logo do you want to change?',
-        finalText: (ctx, channel) => 'You will be changing the logo for @' + channel + '. Send the logo as a file (recommended to preserve the transparency) or as a photo.'
+        finalText: (ctx, channel) => {
+            return {text: 'You will be changing the logo for @' + channel + '. Send the logo as a file (recommended to preserve the transparency) or as a photo.'}
+        }
     },
     caption_template: {
         finalConvo: 'settings.caption_template.text',
@@ -41,7 +46,7 @@ const settingSpectficParams = {
                 .replace(/:description\b/, '<b>:description</b>')
                 .replace(/:price\b/, '<b>:price</b>')
             let text = '<i>You will be changing the caption template for</i> @' + channel + ', <i>here is the current template, you can edit anything except</i> <b>:title</b>, <b>:description</b> <i>and</i> <b>:price</b>. <i>Those are placeholders for the posts.</i>\n\n' + currentTemplate
-            return text
+            return {text}
         }
     },
     sold_template: {
@@ -53,7 +58,7 @@ const settingSpectficParams = {
                        + channel
                        + ', <i>here is the current template, you can edit anything except</i> <b>:caption</b>. <i>It is a placeholder for the caption.</i>\n\n'
                        + currentTemplate.replace(/:caption\b/, '<b>:caption</b>')
-            return text
+            return {text}
         }
     },
     contact_text: {
@@ -62,7 +67,7 @@ const settingSpectficParams = {
         finalText: async (ctx, channel) => {
             let currentText = await ctx.channels.get(channel, 'contact_text')
             let text = '<i>You will be changing the text shown below the caption when a customer selects "Buy" from</i> @' + channel + ', <i>here is the current text. You can include additional info like phone numbers and so on.</i>\n\n' + currentText
-            return text
+            return {text}
         }
     },
     description_bullet: {
@@ -71,7 +76,7 @@ const settingSpectficParams = {
         finalText: async (ctx, channel) => {
             let currentBullet = await ctx.channels.get(channel, 'description_bullet')
             let text = '<i>You will be changing the bullet point characters in the description of the item you post on</i> @' + channel + ', <i>here is the current one. Send a new phrase that you want to appear when you begin lines with "." (dot) in the description.</i>\n\n' + currentBullet
-            return text
+            return {text}
         }
     },
     channel_permissions: {
@@ -80,7 +85,25 @@ const settingSpectficParams = {
         finalText: async (ctx, channel) => {
             let admins = await ctx.telegram.getChatAdministrators('@' + channel)
             await ctx.channels.updatePermissions(channel, admins, ctx.botInfo.username)
-            return 'The permissions for @' + channel + ' have been updated.'
+            return {text: 'The permissions for @' + channel + ' have been updated.'}
+        }
+    },
+    description_mode: {
+        finalConvo: 'settings.description_mode',
+        introText: 'Which channel do you want to change the default description mode of?',
+        finalText: async (ctx, channel) => {
+            let isBullet = await ctx.channels.get(channel, 'description_is_bullet')
+            let current = isBullet ? 'without' : 'with'
+            let text = '<i>You will be changing whether new lines or lines that begin with</i> <b>.</b> <i>are treated as bullets on descriptions on</i> @' + channel + '. <i>Currently, lines</i> <b>' + current + '</b> <i>a</i> <b>.</b> <i>at the beginning are taken as bullet points.</i>'
+            return {
+                text,
+                reply_markup: {
+                    inline_keyboard: [[
+                        {text: 'With .', callback_data: 'settings.dsc_mod:' + channel + ',false'},
+                        {text: 'Without .', callback_data: 'settings.dsc_mod:' + channel + ',true'}
+                    ]]
+                }
+            }
         }
     }
 }
@@ -109,7 +132,7 @@ async function handleSettingIntro(ctx) {
         let convo = settingSpectficParams[type].finalConvo
         ctx.people.set(username, {conversation: convo, to_update: channel})
         let text = await settingSpectficParams[type].finalText(ctx, channel)
-        ctx.telegram.editMessageText(chatId, messageId, undefined, text, {parse_mode: 'html'})
+        ctx.telegram.editMessageText(chatId, messageId, undefined, text.text, {parse_mode: 'html', reply_markup: text.reply_markup})
     }
 }
 
@@ -122,7 +145,7 @@ async function handleSettingChannel(ctx) {
     let messageId = ctx.update.callback_query.message.message_id
     let current = settingSpectficParams[type]
     let text = await current.finalText(ctx, channel)
-    ctx.telegram.editMessageText(chatId, messageId, undefined, text, { parse_mode: 'html', })
+    ctx.telegram.editMessageText(chatId, messageId, undefined, text.text, { parse_mode: 'html', reply_markup: text.reply_markup})
 }
 
 async function handleSettingTextContactText(ctx) {
@@ -169,6 +192,19 @@ async function handleSettingTextDescBullet(ctx) {
     ctx.reply('@' + channel + "'s description bullet has been updated. The new one will be shown the next time you post something.")
 }
 
+async function handleSettingDescriptionMode(ctx) {
+    let username = ctx.from.username
+    let data = ctx.update.callback_query.data
+    let [channel, result] = data.split(',')
+    let mode = result === 'true' ? true : false
+    ctx.channels.set(channel, {description_is_bullet: mode})
+    ctx.people.set(username, {conversation: null, to_update: null})
+    let chatId = ctx.update.callback_query.from.id
+    let messageId = ctx.update.callback_query.message.message_id
+    let text = 'The default description mode for @' + channel + ' has changed.'
+    ctx.telegram.editMessageText(chatId, messageId, undefined, text)
+}
+
 async function handleSettingLogoDoc(ctx) {
     let username = ctx.from.username
     let fileProps
@@ -209,4 +245,5 @@ module.exports = {
     handleSettingTextCaptionTempl,
     handleSettingTextContactText,
     handleSettingLogoDoc,
+    handleSettingDescriptionMode
 }
