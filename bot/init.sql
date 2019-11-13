@@ -29,6 +29,8 @@ CREATE TABLE channels (username VARCHAR(96) PRIMARY KEY,
                        sold_template VARCHAR(1024) DEFAULT '===( SOLD )===\n\n:caption\n\n===( SOLD )===',
                        license_expiry VARCHAR(255),
                        description_bullet VARCHAR(12) DEFAULT '•',
+                       /* whether the default mode for the description is bullets */
+                       description_is_bullet BOOLEAN DEFAULT FALSE,
                        FOREIGN KEY (admin) REFERENCES people(username)
 ) ENGINE = INNODB;
 

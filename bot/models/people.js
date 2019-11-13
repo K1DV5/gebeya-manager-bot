@@ -33,7 +33,8 @@ class people extends BaseModel {
                                 p.removed_message_ids as removedIds,
                                 p.conversation as stage,
                                 c.caption_template AS template,
-                                c.description_bullet as bullet
+                                c.description_bullet as bullet,
+                                c.description_is_bullet as useBullets
                          FROM people AS p
                          INNER JOIN channels AS c
                             ON c.username = p.to_update
@@ -46,7 +47,7 @@ class people extends BaseModel {
         } else if (purpose === 'edit') { // for the edit caption functionality
             // get the channel's caption template
             let channel = (await this.sql('SELECT to_update FROM people WHERE username = ?', [username]))[0].to_update.split('/')[0]
-            let channelData = (await this.sql('SELECT caption_template, description_bullet FROM channels WHERE username = ?', [channel]))[0]
+            let channelData = (await this.sql('SELECT caption_template, description_bullet, description_is_bullet FROM channels WHERE username = ?', [channel]))[0]
             let query = `SELECT to_update as destination,
                                 draft_title AS title,
                                 draft_description AS description,
@@ -61,18 +62,26 @@ class people extends BaseModel {
                 adminData = result
                 adminData.template = channelData.caption_template
                 adminData.bullet = channelData.description_bullet
+                adminData.useBullets = channelData.description_is_bullet
             }
         }
-        if (adminData) {
-            adminData.caption = adminData.template
-                .replace(/:title\b/, adminData.title)
-                .replace(/:description\b/, adminData.description.replace(/^\./gm, adminData.bullet))
-                .replace(/:price\b/, adminData.price)
-            adminData.images = adminData.images ? JSON.parse(adminData.images) : null
-            adminData.removedIds = adminData.removedIds ? JSON.parse(adminData.removedIds) : null
-            return adminData
+        if (!adminData) {
+            console.log('Not found')
+            return
         }
-        console.log('Not found')
+        adminData.caption = adminData.template
+            .replace(/:title\b/, adminData.title)
+            .replace(/:price\b/, adminData.price)
+        if (adminData.useBullets) { // use bullets for every line without .
+            adminData = adminData
+                .replace(/:description\b/, adminData.description.replace(/^(?=[^.])/gm, adminData.bullet))
+                .replace(/:description\b/, adminData.description.replace(/^\./gm, ''))
+        } else { // use bullets for lines beginning with .
+            adminData = adminData.replace(/:description\b/, adminData.description.replace(/^\./gm, adminData.bullet))
+        }
+        adminData.images = adminData.images ? JSON.parse(adminData.images) : null
+        adminData.removedIds = adminData.removedIds ? JSON.parse(adminData.removedIds) : null
+        return adminData
     }
 
     clearDraft(username) {
