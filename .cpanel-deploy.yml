@@ -4,7 +4,7 @@ deployment:
         # manual tasks are:
         # - telegram: maybe manually set the webhook to https://tg-bot.<domain.com>/<bot-token>
         # - cpanel.db: create db and user, set encoding and collation to utf8mb4[_unicode_ci]
-        # - .env: set domain, bot username & token, db name & user & password, 
+        # - .env: set domain, bot username & token, db name & user & password
         # - cpanel.subdomain: create a subdomain tg-bot
         # - cpanel.subdomain: ensure that it uses ssl certificates
         # - cpanel.node: create app on the subdomain and without any path, app-root=repo-root
@@ -12,8 +12,8 @@ deployment:
         # - cpanel.file: put .env file in repo root
         # - local: git remote add cpanel ssh://<cp-user>@<domain.tld>/home/<cp-user>/<repo-root>
         # - local: git push cpanel [everytime]
-        # - cpanel.node: maybe manually restart the app [everytime ?]
-            # - cloudlinux-selector --json --interpreter nodejs --app-root /home/gebeyama/gebeya-manager-bot restart
+        # - cpanel.node: restart the app [everytime]
+            # - cloudlinux-selector --json --interpreter nodejs --app-root /home/<app-root> restart
 
         # following are used when the app root is NOT the repo root
         # in that case, uncommenent them and rename this file to .cpanel.yml, put .env file in app root

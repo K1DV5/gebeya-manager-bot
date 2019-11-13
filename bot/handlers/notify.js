@@ -55,7 +55,7 @@ function makeKeyboard(permissions, buttons) {
  * prepares the people to send messages to
  * @param {object} ctx: the context
  * @param {string} channel: the channel
- * @param {string[]} fullPerms: people with full permissions
+ * @param {string | string[]} fullPerms: people with full permissions
  * @returns {Promise<Array<Object>>} others: the prepared
  */
 async function preparePerms(ctx, channel, fullPerms) {
@@ -85,7 +85,7 @@ async function preparePerms(ctx, channel, fullPerms) {
      * @param {Array<Object>} buttons.delete the buttons given to those with delete permissions
  * @param {string} imageId the image id in the message
  * @param {string} caption the caption in the message
- * @param {string[]} exclude the usernames of the people to exclude from notifying
+ * @param {string | string[]} exclude the usernames of the people to exclude from notifying
  */
 async function sendNotifs(ctx, channel, postId, perms, buttons, imageId, caption, exclude) {
     exclude = Array.isArray(exclude) ? exclude : [exclude]

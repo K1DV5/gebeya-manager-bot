@@ -1,3 +1,4 @@
+// @ts-nocheck
 const Jimp = require('jimp')
 const https = require('https')
 const fs = require('fs')
