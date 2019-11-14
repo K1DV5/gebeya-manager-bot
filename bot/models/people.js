@@ -73,11 +73,14 @@ class people extends BaseModel {
             .replace(/:title\b/, adminData.title)
             .replace(/:price\b/, adminData.price)
         if (adminData.useBullets) { // use bullets for every line without .
-            adminData = adminData
-                .replace(/:description\b/, adminData.description.replace(/^(?=[^.])/gm, adminData.bullet))
-                .replace(/:description\b/, adminData.description.replace(/^\./gm, ''))
+            adminData.caption = adminData.caption
+                .replace(/:description\b/, adminData.description
+                                            .replace(/^(?=[^.])/gm, adminData.bullet)
+                                            .replace(/^\./gm, '')
+                )
         } else { // use bullets for lines beginning with .
-            adminData = adminData.replace(/:description\b/, adminData.description.replace(/^\./gm, adminData.bullet))
+            adminData.caption = adminData.caption
+                .replace(/:description\b/, adminData.description.replace(/^\./gm, adminData.bullet))
         }
         adminData.images = adminData.images ? JSON.parse(adminData.images) : null
         adminData.removedIds = adminData.removedIds ? JSON.parse(adminData.removedIds) : null
