@@ -49,8 +49,8 @@ CREATE TABLE posts (channel VARCHAR(96),
                     interested VARCHAR(3000) DEFAULT '[]', /* [{name: '', id: ''},...] - interested customers, max 21 */
                     state VARCHAR(255) DEFAULT 'available',  /* or 'sold' or 'deleted' */
                     PRIMARY KEY (channel, message_id),
-                    FOREIGN KEY (channel) REFERENCES channels(username),
-                    FOREIGN KEY (author) REFERENCES people(username)
+                    FOREIGN KEY (channel) REFERENCES channels(username) ON DELETE CASCADE,
+                    FOREIGN KEY (author) REFERENCES people(username) ON DELETE CASCADE
 ) ENGINE = INNODB;
 
 /* archive for the posts, they go here when reposted */
@@ -77,8 +77,8 @@ CREATE TABLE channel_permissions (
     edit_others BOOLEAN, /* edit posts by other admins */
     delete_others BOOLEAN, /* delete posts by other admins */
     PRIMARY KEY (person, channel),
-    FOREIGN KEY (channel) REFERENCES channels(username),
-    FOREIGN KEY (person) REFERENCES people(username)
+    FOREIGN KEY (channel) REFERENCES channels(username) ON DELETE CASCADE,
+    FOREIGN KEY (person) REFERENCES people(username) ON DELETE CASCADE
 ) ENGINE = INNODB;
 
 CREATE TABLE notifications (
@@ -87,8 +87,8 @@ CREATE TABLE notifications (
     post_id VARCHAR(96),
     message_id VARCHAR(96),
     PRIMARY KEY (person, channel, post_id),
-    FOREIGN KEY (person) REFERENCES people(username),
-    FOREIGN KEY (channel, post_id) REFERENCES posts(channel, message_id) ON UPDATE CASCADE
+    FOREIGN KEY (person) REFERENCES people(username) ON DELETE CASCADE,
+    FOREIGN KEY (channel, post_id) REFERENCES posts(channel, message_id) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE = INNODB;
 
 /* trigger for setting the default value for the contact text of channels */
