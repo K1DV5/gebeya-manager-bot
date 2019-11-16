@@ -39,19 +39,6 @@ const commandHandlers = {
 }
 
 const convoHandlers = {
-    null: ctx => {
-        if (ctx.updateSubTypes.includes('text')) {
-            let text = ctx.message.text
-            if (/hi|hello/.test(text.toLowerCase())) {
-                ctx.reply('Hi, maybe you need /help')
-            } else if (!isAdmin) {
-                ctx.reply(ctx.fallbackReply)
-            }
-        } else if (!isAdmin) {
-            ctx.reply(ctx.fallbackReply)
-        }
-    },
-
     'post.title': ctx => {
         if (ctx.updateSubTypes.includes('text')) {
             post.handleTitleStage(ctx)
@@ -189,12 +176,15 @@ async function adminRoute(ctx) {
     if (updateType === 'message') {
         if (updateSubTypes.includes('text')) {
             let {command} = splitCommand(ctx.message.text)
-            if (command === '/adminadd') {
-                await admin.handleAdminAdd(ctx)
-            } else if (command === '/try') {
-                ctx.reply('Olla!')
-            } else if (command[0] === '/'){
-                ctx.reply('No command like that')
+            if (command[0] === '/') {
+                if (command === '/adminadd') {
+                    await admin.handleAdminAdd(ctx)
+                } else if (command === '/try') {
+                    ctx.reply('Olla!')
+                } else {
+                    ctx.reply('No command like that')
+                }
+                return true
             }
         }
     }
@@ -236,16 +226,24 @@ async function router(ctx) {
         }
         // conversation dependent ------------------------------------------------
         let convo = await ctx.people.getConvo(username)
-        if (Object.keys(convoHandlers).includes(String(convo))) {
+        if (convo && Object.keys(convoHandlers).includes(convo)) {
             let handler = convoHandlers[convo]
             await handler(ctx)
             return 1
+        } else if (ctx.updateSubTypes.includes('text')) {
+            let text = ctx.message.text
+            if (/hi|hello/.test(text.toLowerCase())) {
+                ctx.reply('Hi, maybe you need /help')
+                return 1
+            }
         }
     }
     // if it gets here, check if they are admin --------------------------------------
     if (ctx.admins.includes(username)) { // admin
-        await adminRoute(ctx)
-        return 1
+        let handled = await adminRoute(ctx)
+        if (handled) {
+            return 1
+        }
     }
 
     // the customer
