@@ -171,7 +171,7 @@ async function notifySold(ctx, channel, postId, data) {
     let author = await ctx.posts.get({channel, message_id: postId}, 'author') // who first posted it
     let itemLink = '<a href="https://t.me/' + channel + '/' + postId + '">this item</a>'
     // edit the editor message
-    let caption = '<i>You marked</i> ' + itemLink + ' <b>sold</b>.\n\n' + data.caption
+    let caption = '<i>You marked</i> ' + itemLink + ' <b>sold on</b> @' + channel + '.\n\n' + data.caption
     let perms = await preparePerms(ctx, channel, author)
     let selfPerms = perms.filter(p => p.person === editor)[0]
     let messageId = sendNotifSelf(ctx, caption, data.buttons, author, selfPerms)
