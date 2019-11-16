@@ -13,16 +13,16 @@ async function handleLicense(ctx) {
             response += 'You have registered the following channels. Their license expiry date is shown accordingly.\n'
             for (let channel of channels) {
                 let expDate = new Date(channel.license_expiry*1000)
-                expDate = expDate.getTime() > ctx.update.message.date*1000 ? expDate.toDateString() : '[Expired]'
-                response += '\n@' + channel.username + ' - ' + expDate
+                let expirText = expDate.getTime() > ctx.update.message.date*1000 ? expDate.toDateString() : '[Expired]'
+                response += '\n@' + channel.username + ' - ' + expirText
             }
         }
         if (permittedChannels) {
             response += '\n\nThe following are the channels you have permissions on. Their license expiry date is shown accordingly.\n'
             for (let channel of permittedChannels) {
                 let expDate = new Date(channel.license_expiry*1000)
-                expDate = expDate.getTime() > ctx.update.message.date*1000 ? expDate.toDateString() : '[Expired]'
-                response += '\n@' + channel.username + ' - ' + expDate
+                let expirText = expDate.getTime() > ctx.update.message.date*1000 ? expDate.toDateString() : '[Expired]'
+                response += '\n@' + channel.username + ' - ' + expirText
             }
         }
         ctx.reply(response.trim())

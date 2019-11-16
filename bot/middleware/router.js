@@ -205,7 +205,7 @@ async function callbackRoute(ctx) {
 
 async function router(ctx) {
     // some updates aren't from a person, like channel post editted...
-    if (!ctx.from) return 1 
+    if (!ctx.from) return 1
 
     let username = ctx.from.username
     ctx.state.isChannelAdmin = await ctx.people.exists(username)
