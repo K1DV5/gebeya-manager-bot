@@ -468,7 +468,9 @@ async function handleRepost(ctx) {
     }
     if (postData.state !== 'deleted') {
         // remove the current one
-        deleteMessage(ctx, '@' + channel, postId)
+        let soldTemplate = await ctx.channels.get(channel, 'sold_template')
+        let soldText = soldTemplate.replace(/:caption\b/, postData.caption)
+        deleteMessage(ctx, '@' + channel, postId, soldText)
     }
     let collageId = JSON.parse(postData.image_ids).collage
     let message = await ctx.telegram.sendPhoto('@' + channel, collageId, {caption: postData.caption})

@@ -2,12 +2,12 @@
  * tries to delete messages on telegram and if it fails
  * tries to edit them with deleted text and if it fails
  * maybe means the message doesn't exist.
- * @param {object} ctx: the context from telegraf
- * @param {string} chatId: the chatId for the deleted message
- * @param {string | Number}: the message id of the message to delete
+ * @param {object} ctx the context from telegraf
+ * @param {string} chatId the chatId for the deleted message
+ * @param {string | Number} messageId the message id of the message to delete
+ * @param {string} failText the text editted to put on fail
  */
-async function deleteMessage(ctx, chatId, messageId) {
-    'use strict';
+async function deleteMessage(ctx, chatId, messageId, failText='[deleted]') {
     // try to delete it and if failed, edit it to convey deletion
     let success
     try {
@@ -17,7 +17,7 @@ async function deleteMessage(ctx, chatId, messageId) {
         success = false
         if (err.code == 400) {
             try {
-                await ctx.telegram.editMessageCaption(chatId, messageId, undefined, '[deleted]')
+                await ctx.telegram.editMessageCaption(chatId, messageId, undefined, failText)
             } catch (err) {
                 console.log('edit error:', err.code, err.message)
             }
@@ -47,8 +47,7 @@ function makeKeyboard(permissions, buttons) {
             keyboard.push(...buttons.delete)
         }
     }
-    keyboard = keyboard.length ? {reply_markup: {inline_keyboard: [keyboard]}} : {}
-    return keyboard
+    return keyboard.length ? {reply_markup: {inline_keyboard: [keyboard]}} : {}
 }
 
 /**
@@ -66,7 +65,7 @@ async function preparePerms(ctx, channel, fullPerms) {
     let channelAdmin = await ctx.channels.get(channel, 'admin')
     if (!fullPerms.includes(channelAdmin)) fullPerms.push(channelAdmin)
     perms = [
-        ...perms.filter(p => !fullPerms.includes(p.person)), 
+        ...perms.filter(p => !fullPerms.includes(p.person)),
         ...fullPerms.map(p => {return {
             person: p, edit_others: true, delete_others: true
         }})
@@ -85,9 +84,9 @@ async function preparePerms(ctx, channel, fullPerms) {
      * @param {Array<Object>} buttons.delete the buttons given to those with delete permissions
  * @param {string} imageId the image id in the message
  * @param {string} caption the caption in the message
- * @param {string | string[]} exclude the usernames of the people to exclude from notifying
+ * @param {string | string[] | null} exclude the usernames of the people to exclude from notifying
  */
-async function sendNotifs(ctx, channel, postId, perms, buttons, imageId, caption, exclude) {
+async function sendNotifs(ctx, channel, postId, perms, buttons, imageId, caption, exclude=null) {
     exclude = Array.isArray(exclude) ? exclude : [exclude]
     // the previously sent notifs by person
     let previous = (await ctx.posts.getNotif(channel, postId)).reduce((acc, curr) => {
