@@ -23,7 +23,7 @@ function makeKeyboardTiles(buttons, cols=2) {
 
 function argparse(from) {
     // find values of parameters written like cli args: /command -p param /// but spaces are allowed.
-    let paramsSection = from[0] === '/'? from.split(' ').slice(1) : from.trim()
+    let paramsSection = from[0] === '/'? from.split(' ').slice(1) : from.trim().split(' ')
     let params = {positional: []}
     let currentKey = null
     for (let part of paramsSection) {
