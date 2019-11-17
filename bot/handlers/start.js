@@ -4,7 +4,8 @@ async function handleWelcomeStart(ctx) { // for empty start from admins
     let username = ctx.from.username
     // store the chat id for the username
     let name = ctx.from.first_name || username
-    await ctx.reply('Welcome, ' + name + ', please send\n/post to post a new item. Or you can go to\n/help to know more.', {
+    let channels = (await ctx.people.getChannels(username)).map(ch => ch.username)
+    await ctx.reply('Welcome, ' + name + ', you can post items on @' + channels.join(', @') + ', please send\n/post to post a new item. Or you can go to\n/help to know more.', {
         reply_markup: ctx.defaultKeyboard
     })
     ctx.people.set(username, {chat_id: ctx.update.message.chat.id})

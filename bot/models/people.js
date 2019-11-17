@@ -97,7 +97,7 @@ class people extends BaseModel {
              WHERE username = ?`, [username])
     }
 
-    async getChannels(username, licenseValidOn, purpose) {
+    async getChannels(username, licenseValidOn, purpose='post') {
         let query = `SELECT c.username, c.license_expiry
                          FROM channels as c
                              INNER JOIN people AS p
