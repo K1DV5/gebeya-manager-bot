@@ -17,7 +17,9 @@ let helpDetails = {
 
             'Sold template': 'You can set how you want the caption to change when it is marked sold. It can contain anything as long as it contains the caption placeholder.',
 
-            'Description bullet': 'This setting lets you change the character(s) that replace the "." (dot) in the line beginnings of the description. This means you can list e.g. features of the item indicating the list items with . and it will replace the dot with whatever you define in this setting. The default is the bullet character (like in this text.)',
+            'Description mode': 'This setting lets you change which lines in the description are converted to bulleted points Default is "With .". If you mostly list features of your items, choost "without ." so that lines starting without . are given bullets. But if you write normal text, choose "With ." and only lines starting with . are given bullets. If you want to include bulleted lists in this mode, start the lines with .',
+
+            'Description bullet': 'This setting lets you change the character(s) that are used as bullet characters in the line beginnings of the description The default is the bullet character (like in this text.)',
 
             'Update permissions': 'This setting retrieves admins\' permissions from Telegram so that the permissions can be used with the bot as well. Four permissions are retrieved:\n  ◦ Post messages (to post)\n  ◦ Change channel info (for settings)\n  ◦ Edit messages (to edit and repost others posts)\n  ◦ Delete messages (to delete others posts)\nNote: the person who is registered as the admin of the channel here and the creator of the channel (if they are not the same person) will always be granted all permissions.'
         }).map(([key, val]) => '<b>' + key + '</b>: ' + val).join('\n\n'),

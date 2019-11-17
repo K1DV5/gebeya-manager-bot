@@ -36,13 +36,19 @@ const commandHandlers = {
     '/help': help.handleHelp,
     '/license': license.handleLicense,
     '/cancel': cancel.handleCancel,
-    '/register': help.handleRegister
 }
 
 const customerCommandHandlers = {
     '/start': start.handleCustomerStart,
     '/help': help.handleCustomerHelp,
     '/register': help.handleRegisterHelp
+}
+
+const adminCommandHandlers = {
+    '/adminadd': admin.handleAdminAdd,
+    '/try': ctx => {
+        ctx.reply('tried')
+    }
 }
 
 const convoHandlers = {
@@ -184,14 +190,9 @@ async function adminRoute(ctx) {
     if (updateType === 'message') {
         if (updateSubTypes.includes('text')) {
             let {command} = splitCommand(ctx.message.text)
-            if (command[0] === '/') {
-                if (command === '/adminadd') {
-                    await admin.handleAdminAdd(ctx)
-                } else if (command === '/try') {
-                    ctx.reply('Olla!')
-                } else {
-                    ctx.reply('No command like that')
-                }
+            let handler = adminCommandHandlers[command]
+            if (handler) {
+                await handler(ctx)
                 return true
             }
         }
