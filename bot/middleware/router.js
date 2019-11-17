@@ -35,7 +35,14 @@ const commandHandlers = {
     '/settings': settings.handleSettings,
     '/help': help.handleHelp,
     '/license': license.handleLicense,
-    '/cancel': cancel.handleCancel
+    '/cancel': cancel.handleCancel,
+    '/register': help.handleRegister
+}
+
+const customerCommandHandlers = {
+    '/start': start.handleCustomerStart,
+    '/help': help.handleCustomerHelp,
+    '/register': help.handleRegisterHelp
 }
 
 const convoHandlers = {
@@ -155,13 +162,14 @@ async function customerRoute(ctx) {
         if (text[0] === '/') { // a command
             let {command, payload} = splitCommand(text)
             ctx.state.payload = payload
-            if (command === '/start') {
-                commandHandlers['/start'](ctx)
+            let handler = customerCommandHandlers[command]
+            if (handler) {
+                await handler(ctx)
             } else {
                 ctx.reply('You are not an admin of any channel here, you can\'t use that.')
             }
         } else if (/hi|hello/.test(text.toLowerCase())) {
-            ctx.reply('Hi, maybe you need /help')
+            ctx.reply('Hi, maybe you need /help.')
         } else {
             ctx.reply(ctx.fallbackReply)
         }
@@ -229,12 +237,6 @@ async function router(ctx) {
             let handler = convoHandlers[convo]
             await handler(ctx)
             return 1
-        } else if (ctx.updateSubTypes.includes('text')) {
-            let text = ctx.message.text
-            if (/hi|hello/.test(text.toLowerCase())) {
-                ctx.reply('Hi, maybe you need /help')
-                return 1
-            }
         }
     }
     // if it gets here, check if they are admin --------------------------------------
@@ -244,7 +246,6 @@ async function router(ctx) {
             return 1
         }
     }
-
     // the customer
     await customerRoute(ctx)
     return 1

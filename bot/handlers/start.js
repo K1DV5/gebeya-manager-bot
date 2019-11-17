@@ -1,38 +1,38 @@
 const {notifyBuy} = require('./notify')
 
-async function handleWelcomeStart(ctx) {
+async function handleWelcomeStart(ctx) { // for empty start from admins
     let username = ctx.from.username
-    if (ctx.state.isChannelAdmin) {
-        // store the chat id for the username
-        let name = ctx.from.first_name || username
-        await ctx.reply('Welcome, ' + name + ', please send\n/post to post a new item. Or you can go to\n/help to know more.', {
-            reply_markup: ctx.defaultKeyboard
-        })
-        ctx.people.set(username, {chat_id: ctx.update.message.chat.id})
-    } else {
-        let reply = 'Welcome, please go to one of our channels '
-        let channels = await ctx.channels.getUsernames()
-        let chosen = []
-        // limit the number of shown channels to 5
-        let limit = 5
-        if (channels.length > limit) {
-            for (let i = 0; i < limit; i++) {
-                let selectedIndex = Math.round(Math.random()*channels.length)
-                chosen.push(channels[selectedIndex])
-                channels.splice(selectedIndex)
-            }
-        } else {
-            chosen = channels
-        }
-        for (let channel of chosen) {
-            reply += '@' + channel + ', '
-        }
-        reply = reply.slice(0, -2) + ' and select "Buy" on an item.'
-        ctx.reply(reply)
-    }
+    // store the chat id for the username
+    let name = ctx.from.first_name || username
+    await ctx.reply('Welcome, ' + name + ', please send\n/post to post a new item. Or you can go to\n/help to know more.', {
+        reply_markup: ctx.defaultKeyboard
+    })
+    ctx.people.set(username, {chat_id: ctx.update.message.chat.id})
 }
 
-async function handleStart(ctx) {
+async function handleCustomerStart(ctx) { // for empty start from customers
+    let reply = 'Welcome, please go to one of our channels '
+    let channels = await ctx.channels.getUsernames()
+    let chosen = []
+    // limit the number of shown channels to 5
+    let limit = 5
+    if (channels.length > limit) {
+        for (let i = 0; i < limit; i++) {
+            let selectedIndex = Math.round(Math.random()*channels.length)
+            chosen.push(channels[selectedIndex])
+            channels.splice(selectedIndex)
+        }
+    } else {
+        chosen = channels
+    }
+    for (let channel of chosen) {
+        reply += '@' + channel + ', '
+    }
+    reply = reply.slice(0, -2) + ' and select "Buy" on an item. Or see the /help'
+    ctx.reply(reply)
+}
+
+async function handleStart(ctx) { // start with a buy link parameter
     let messageIdDb = ctx.state.payload.replace('-', '/')
     let [channel, postId] = messageIdDb.split('/')
     let postData = await ctx.posts.get({channel, message_id: postId})
@@ -70,5 +70,6 @@ async function handleStart(ctx) {
 
 module.exports = {
     handleStart,
+    handleCustomerStart,
     handleWelcomeStart
 }
