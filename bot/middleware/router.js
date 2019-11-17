@@ -192,14 +192,13 @@ async function adminRoute(ctx) {
 
 async function callbackRoute(ctx) {
     let callbackData = ctx.update.callback_query.data
-    for (let [prefix, handler] of Object.entries(callbackHandlers)) {
-        if (callbackData.slice(0, prefix.length) === prefix) {
-            // // remove the prefix, and the colon
-            ctx.update.callback_query.data = callbackData.slice(prefix.length)
-            await handler(ctx)
-            ctx.answerCbQuery('Done')
-            return
-        }
+    let prefix = callbackData.split(':', 1)[0] + ':'
+    let handler = callbackHandlers[prefix]
+    if (handler) {
+        // remove the prefix, and the colon
+        ctx.update.callback_query.data = callbackData.slice(prefix.length)
+        await handler(ctx)
+        ctx.answerCbQuery('Done')
     }
 }
 

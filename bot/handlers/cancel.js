@@ -1,4 +1,4 @@
-const {deleteMessage} = require('./notify')
+const { deleteMessage } = require('./notify')
 
 async function handleCancel(ctx) {
     let username = ctx.from.username
@@ -21,4 +21,4 @@ async function handleCancel(ctx) {
     }
 }
 
-module.exports = {handleCancel}
+module.exports = { handleCancel }

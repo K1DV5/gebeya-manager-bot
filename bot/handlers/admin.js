@@ -1,5 +1,5 @@
-const {argparse} = require('../utils')
-const {deleteMessage} = require('./notify')
+const { argparse } = require('../utils')
+const { deleteMessage } = require('./notify')
 
 // start parameter for refreshing chat id link
 const startParam = 'refresh'
@@ -19,7 +19,7 @@ async function handleAdminAdd(ctx) {
             let admins
             try { // to check if the bot is an admin
                 admins = await ctx.telegram.getChatAdministrators('@' + args.c)
-            } catch(err) {
+            } catch (err) {
                 if (err.code === 400) {
                     await ctx.reply(err.description + '\n\nMaybe the bot is not added to the channel, or the channel doesn\'t exist.')
                 } else {
@@ -27,20 +27,20 @@ async function handleAdminAdd(ctx) {
                 }
                 return
             }
-            let botIsAdmin = admins.filter(a => 
-                    a.user &&
-                    a.user.username === ctx.botInfo.username &&
-                    a.can_post_messages).length
+            let botIsAdmin = admins.filter(admin =>
+                admin.user &&
+                admin.user.username === ctx.botInfo.username &&
+                admin.can_post_messages).length
             if (!botIsAdmin) {
                 ctx.reply('The bot has not been given necessary access: must be admin with Post messags permission.')
                 return
             }
-            await ctx.people.insert({username: args.u})
+            await ctx.people.insert({ username: args.u })
             let licenseExpiry = new Date(args.e)
             await ctx.channels.insert({
                 username: args.c,
                 admin: args.u,
-                license_expiry: licenseExpiry.getTime()/1000, // by 1000 to convert to seconds
+                license_expiry: licenseExpiry.getTime() / 1000, // by 1000 to convert to seconds
             })
             // set permissions for other admins
             await ctx.channels.updatePermissions(args.c, admins, ctx.botInfo.username)
