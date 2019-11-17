@@ -53,7 +53,7 @@ function handleCustomerHelp(ctx) { // for customers
 }
 
 function handleRegisterHelp(ctx) { // for customers
-    let registerHelp = 'Registration help\n\nTo register your channel with this bot, follow this:\n1. Add this bot to your channel as an <b>admin</b> with a <i>Post messages</i> permission.\n2. Contact @' + ctx.admins + ' to set up your subscription and register your channel.\n3. <a href="https://t.me/' + ctx.botInfo.username + '?start=refresh">Restart your conversation with the bot</a> to complete your registration.'
+    let registerHelp = 'Registration help\n\nTo register your channel with this bot, follow this:\n1. Make sure you have a username on Telegram.\n2. Add this bot to your channel as an <b>admin</b> with a <i>Post messages</i> permission.\n3. Contact @' + ctx.admins + ' and send your channel\'s invite link to set up your subscription and register your channel.\n4. <a href="https://t.me/' + ctx.botInfo.username + '?start=refresh">Restart your conversation with the bot</a> to complete your registration.'
     ctx.replyWithHTML(registerHelp)
 }
 
