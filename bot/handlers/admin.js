@@ -19,6 +19,15 @@ async function handleAdminAdd(ctx) {
             let admins
             try { // to check if the bot is an admin
                 admins = await ctx.telegram.getChatAdministrators('@' + args.c)
+                // make sure that the...
+                let botIsAdmin = admins.filter(admin =>
+                    admin.user &&
+                    admin.user.username === ctx.botInfo.username &&
+                    admin.can_post_messages).length
+                if (!botIsAdmin) {
+                    ctx.reply('The bot has not been given necessary access: must be admin with Post messags permission.')
+                    return
+                }
             } catch (err) {
                 if (err.code === 400) {
                     await ctx.reply(err.description + '\n\nMaybe the bot is not added to the channel, or the channel doesn\'t exist.')
@@ -27,12 +36,9 @@ async function handleAdminAdd(ctx) {
                 }
                 return
             }
-            let botIsAdmin = admins.filter(admin =>
-                admin.user &&
-                admin.user.username === ctx.botInfo.username &&
-                admin.can_post_messages).length
-            if (!botIsAdmin) {
-                ctx.reply('The bot has not been given necessary access: must be admin with Post messags permission.')
+            // make sure that the person is also the admin
+            if (!admins.filter(a => a.user && a.user.username === args.u).length && !args.f) {
+                await ctx.reply('@' + args.u + ' is not an admin of @' + args.c + '. Add -f to override.')
                 return
             }
             await ctx.people.insert({ username: args.u })
