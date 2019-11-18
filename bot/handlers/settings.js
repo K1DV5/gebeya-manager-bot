@@ -1,5 +1,5 @@
 const path = require('path')
-const {downloadFile, makeKeyboardTiles} = require('../utils')
+const {downloadFile, makeKeyboardTiles, escapeHTML} = require('../utils')
 
 async function handleSettings(ctx) {
     let username = ctx.from.username
@@ -150,7 +150,7 @@ async function handleSettingChannel(ctx) {
 
 async function handleSettingTextContactText(ctx) {
     let username = ctx.from.username
-    let text = ctx.update.message.text
+    let text = escapeHTML(ctx.update.message.text)
     let channel = await ctx.people.get(username, 'to_update')
     ctx.channels.set(channel, {contact_text: text})
     ctx.people.set(username, {conversation: null})
@@ -159,7 +159,7 @@ async function handleSettingTextContactText(ctx) {
 
 async function handleSettingTextCaptionTempl(ctx) {
     let username = ctx.from.username
-    let text = ctx.update.message.text
+    let text = escapeHTML(ctx.update.message.text)
     if (/:title\b/.test(text) && /:description\b/.test(text) && /:price/.test(text)) {
         let channel = await ctx.people.get(username, 'to_update')
         ctx.channels.set(channel, {caption_template: text})
@@ -172,7 +172,7 @@ async function handleSettingTextCaptionTempl(ctx) {
 
 async function handleSettingTextSoldTempl(ctx) {
     let username = ctx.from.username
-    let text = ctx.update.message.text
+    let text = escapeHTML(ctx.update.message.text)
     if (/:caption\b/.test(text)) {
         let channel = await ctx.people.get(username, 'to_update')
         ctx.channels.set(channel, {sold_template: text})
@@ -185,7 +185,7 @@ async function handleSettingTextSoldTempl(ctx) {
 
 async function handleSettingTextDescBullet(ctx) {
     let username = ctx.from.username
-    let text = ctx.update.message.text
+    let text = escapeHTML(ctx.update.message.text)
     let channel = await ctx.people.get(username, 'to_update')
     ctx.channels.set(channel, {description_bullet: text})
     ctx.people.set(username, {conversation: null})

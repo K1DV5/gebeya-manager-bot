@@ -171,11 +171,26 @@ async function rmdirWithFiles(dir) {
     }
 }
 
+/**
+ * escapes special chars in the text
+ * @param {string} text the text to be escaped
+ */
+function escapeHTML(text) {
+    let entities = {
+        '&': '&amp;',
+        '"': '&quot;',
+        '<': '&lt;',
+        '>': '&gt;'
+    }
+    return text.replace(/[&<>"]/g, c => entities[c])
+}
+
 module.exports = {
     argparse,
     makeCollage,
     watermarkDir,
     downloadFile,
     rmdirWithFiles,
-    makeKeyboardTiles
+    makeKeyboardTiles,
+    escapeHTML
 }

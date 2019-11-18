@@ -3,7 +3,8 @@ const {
     downloadFile,
     watermarkDir,
     rmdirWithFiles,
-    makeCollage
+    makeCollage,
+    escapeHTML
 } = require('../utils')
 const {
     notifyPost,
@@ -58,7 +59,7 @@ async function handleChannelStage(ctx) {
 async function handleTitleStage(ctx) {
     let username = ctx.from.username
     let messageId = ctx.update.message.message_id
-    let title = ctx.message.text
+    let title = escapeHTML(ctx.message.text)
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let message = await ctx.reply('Write the description (bullet lists as well).')
     let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
@@ -68,7 +69,7 @@ async function handleTitleStage(ctx) {
 async function handleDescriptionStage(ctx) {
     let username = ctx.from.username
     let messageId = ctx.update.message.message_id
-    let description = ctx.message.text
+    let description = escapeHTML(ctx.message.text)
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let message = await ctx.reply('And the price? How much is it?')
     let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
@@ -78,7 +79,7 @@ async function handleDescriptionStage(ctx) {
 async function handlePriceStage(ctx) {
     let username = ctx.from.username
     let messageId = ctx.update.message.message_id
-    let price = ctx.message.text
+    let price = escapeHTML(ctx.message.text)
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let message = await ctx.reply('Send some photos and finally send the command /end when you\'re done.')
     let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
@@ -350,7 +351,8 @@ async function handleEditPrice(ctx) {
     let caption = '<i>The new caption will look like this...</i>\n\n' + adminData.caption
     ctx.replyWithPhoto(collage, {
         parse_mode: 'html',
-        caption, reply_markup: {
+        caption,
+        reply_markup: {
             inline_keyboard: [
                 [
                     {text: 'Save changes', callback_data: 'edit_after:save'},
