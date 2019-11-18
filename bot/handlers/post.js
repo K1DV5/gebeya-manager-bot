@@ -305,7 +305,7 @@ async function handleEditTitle(ctx) {
         let [channel, message_id] = destination.split('/')
         postTitle = await ctx.posts.get({channel, message_id}, 'title')
     } else {
-        postTitle = text
+        postTitle = escapeHTML(text)
     }
     let message = await ctx.reply('Send the new description. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
@@ -323,7 +323,7 @@ async function handleEditDescription(ctx) {
         let [channel, message_id] = destination.split('/')
         postDescription = await ctx.posts.get({channel, message_id}, 'description')
     } else {
-        postDescription = text
+        postDescription = escapeHTML(text)
     }
     let message = await ctx.reply('Send the new price. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
@@ -340,7 +340,7 @@ async function handleEditPrice(ctx) {
         let [channel, message_id] = destination.split('/')
         postPrice = await ctx.posts.get({channel, message_id}, 'price')
     } else {
-        postPrice = text
+        postPrice = escapeHTML(text)
     }
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let messageId = ctx.update.message.message_id
