@@ -138,12 +138,28 @@ class people extends BaseModel {
         }
         return channelsInfo.length ? channelsInfo : null
     }
+
+    async getAll(cols) {
+        if (typeof cols === 'string') {
+            cols = [cols]
+        } else if (!Array.isArray(cols)) {
+            cols = []
+        }
+        let columns = this.cols.filter(c => cols.includes(c))
+        let query = 'SELECT ' + (columns.length ? columns.join(',') : '*') + ' FROM ' + this.table
+        let result = await this.sql(query)
+        if (cols.length === 1 && columns.length === 1) {
+            return result.filter(r => r[columns[0]]).map(r => r[columns[0]])
+        }
+        return result
+    }
 }
 
-// p = new people()
+// let p = new people()
 // p.getConvo('K1DV5').then(console.log)
 // p.exists('K1DV5').then(console.log)
 // p.getChannels('K1DV5',null,'permitted').then(console.log)
 // p.get('K1DV5', 'removed_message_ids').then(console.log)
+// p.getAll('chat_id').then(console.log)
 
 module.exports = people

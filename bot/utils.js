@@ -1,4 +1,3 @@
-// @ts-nocheck
 const Jimp = require('jimp')
 const https = require('https')
 const fs = require('fs')
@@ -116,10 +115,13 @@ function arrange(total, width) {
 async function watermark(image, dest, watermarkImg) {
     if (watermarkImg) {
         if (typeof image === 'string') {
+            // @ts-ignore
             image = await Jimp.read(image)
         }
+        // @ts-ignore
         watermarkImg = await Jimp.read(watermarkImg)
         let props = watermarkProps(image.bitmap.width, image.bitmap.height)
+        // @ts-ignore
         await watermarkImg.contain(props.w, props.h, Jimp.HORIZONTAL_ALIGN_RIGHT | Jimp.VERTICAL_ALIGN_BOTTOM)
         await image.composite(watermarkImg, props.x, props.y)
         if (dest) {
@@ -143,9 +145,11 @@ async function makeCollage(sources, dest, watermarkImg = undefined, width = 720)
         sources = (await fs.promises.readdir(sources)).map(file => path.join(sources, file))
     }
     let collageProps = arrange(sources.length, width)
+    // @ts-ignore
     let collage = await (new Jimp(collageProps.width, collageProps.height))
     for (let [index, file] of sources.entries()) {
         let props = collageProps.arrangement[index]
+        // @ts-ignore
         let image = await Jimp.read(file)
         await image.cover(props.w, props.h)
         collage.composite(image, props.x, props.y)

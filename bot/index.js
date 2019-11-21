@@ -1,6 +1,5 @@
 
 // -{node --inspect %f}
-// @ts-nocheck
 const os = require('os')
 const path = require('path')
 const Telegraf = require('telegraf')
@@ -21,6 +20,7 @@ const SUPER_MEGA_SUPER_COLOSSAL_SUPER_BIG_HUGE_BIG_BOSSES = ['K1DV5']
 let bot
 // let tlsOptions
 if (os.hostname() === 'K1DV5') {
+    // @ts-ignore
     bot = new Telegraf(process.env.TEST_BOT) // the testing bot
     // bot = new Telegraf(process.env.MAIN_BOT) // the testing bot
 } else {
@@ -31,6 +31,7 @@ if (os.hostname() === 'K1DV5') {
     //     key: fs.readFileSync(key),
     // }
 
+    // @ts-ignore
     // main bot, disable webhook reply to get sent message ids and avoid other errors
     bot = new Telegraf(process.env.MAIN_BOT, {telegram: {webhookReply: false}})
     // Set telegram webhook. to make it secure, use the token as the path.

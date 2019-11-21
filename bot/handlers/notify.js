@@ -5,7 +5,7 @@
  * @param {object} ctx the context from telegraf
  * @param {string} chatId the chatId for the deleted message
  * @param {string | Number} messageId the message id of the message to delete
- * @param {string} failText the text editted to put on fail
+ * @param {string} failText the text to edit to on fail
  */
 async function deleteMessage(ctx, chatId, messageId, failText='[deleted]') {
     // try to delete it and if failed, edit it to convey deletion

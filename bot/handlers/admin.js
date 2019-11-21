@@ -63,6 +63,26 @@ async function handleAdminAdd(ctx) {
     }
 }
 
+async function handleAdminAll(ctx) {
+    let text = ctx.message.text
+    let args = argparse(text)
+    deleteMessage(ctx, ctx.chat.id, ctx.message.message_id)
+    if (args.p !== '1221') {
+        ctx.reply(ctx.fallbackReply)
+        return
+    }
+    if (!args.m) {
+        ctx.reply('Need a message with -m')
+        return
+    }
+    let people = await ctx.people.getAll('chat_id')
+    await Promise.all(people.map(async chat => {
+        await ctx.telegram.sendMessage(chat, args.m)
+    }))
+    ctx.reply('Message:\n' + args.m + '\n\nSent for those with a chat id.')
+}
+
 module.exports = {
-    handleAdminAdd
+    handleAdminAdd,
+    handleAdminAll
 }

@@ -46,6 +46,7 @@ const customerCommandHandlers = {
 
 const adminCommandHandlers = {
     '/adminadd': admin.handleAdminAdd,
+    '/adminall': admin.handleAdminAll,
     '/try': ctx => {
         ctx.reply('tried')
     }
