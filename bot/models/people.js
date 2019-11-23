@@ -70,8 +70,8 @@ class people extends BaseModel {
             return
         }
         adminData.caption = adminData.template
-            .replace(/:title\b/, adminData.title)
-            .replace(/:price\b/, adminData.price)
+            .replace(/:title\b/, '<b>' + adminData.title + '</b>')
+            .replace(/:price\b/, '<code>' + adminData.price + '</code>')
         if (adminData.useBullets) { // use bullets for every line without .
             adminData.caption = adminData.caption
                 .replace(/:description\b/, adminData.description
