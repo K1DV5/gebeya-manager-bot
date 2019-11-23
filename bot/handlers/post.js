@@ -26,12 +26,8 @@ async function handlePost(ctx) {
         return
     }
     if (channels.length === 1) {
-        let message = await ctx.reply('You will be posting to @' + channels[0] + '. What is the title of the post?')
-        await ctx.people.set(username, {
-            to_update: channels[0],
-            conversation: 'post.title',
-            removed_message_ids: `[${message.message_id},${ctx.update.message.message_id}]`
-        })
+        ctx.state.channel = channels[0]
+        await handleChannelStage(ctx)
     } else {
         let keyboard = makeKeyboardTiles(channels.map(ch => {return {text: '@' + ch, callback_data: 'post_channel:' + ch}}))
         let message = await ctx.reply('Which channel do you want to post to?', {
@@ -47,13 +43,30 @@ async function handlePost(ctx) {
 
 async function handleChannelStage(ctx) {
     let username = ctx.from.username
-    let channel = ctx.update.callback_query.data
-    // already added to the removed ids
-    await ctx.people.set(username, {to_update: channel, conversation: 'post.title'})
-    let chatId = ctx.update.callback_query.from.id
-    let messageId = ctx.update.callback_query.message.message_id
-    let text = 'You will be posting to @' + channel + '. What is the title of the post?'
-    ctx.telegram.editMessageText(chatId, messageId, undefined, text)
+    let channel = ctx.updateType === 'callback_query' ? ctx.update.callback_query.data : ctx.state.channel
+    let template = await ctx.channels.get(channel, 'caption_template')
+    let next = /:title/.test(template) ? { // title is optional
+        convo: 'post.title',
+        text: 'What is the title of the post?'
+    } : {
+        convo: 'post.description',
+        text: 'Write the description (bullet lists as well).'
+    }
+    if (ctx.updateType === 'callback_query') {
+        // already added to the removed ids
+        await ctx.people.set(username, {to_update: channel, conversation: next.convo})
+        let chatId = ctx.update.callback_query.from.id
+        let messageId = ctx.update.callback_query.message.message_id
+        let text = 'You will be posting to @' + channel + '. ' + next.text
+        ctx.telegram.editMessageText(chatId, messageId, undefined, text)
+    } else {
+        let message = await ctx.reply('You will be posting to @' + channel + next.text)
+        await ctx.people.set(username, {
+            to_update: channel,
+            conversation: next.convo,
+            removed_message_ids: `[${message.message_id},${ctx.update.message.message_id}]`
+        })
+    }
 }
 
 async function handleTitleStage(ctx) {
@@ -68,12 +81,21 @@ async function handleTitleStage(ctx) {
 
 async function handleDescriptionStage(ctx) {
     let username = ctx.from.username
+    let channel = await ctx.people.get(username, 'to_update')
+    let template = await ctx.channels.get(channel, 'caption_template')
+    let next = /:price/.test(template) ? { // price is optional
+        convo: 'post.price',
+        text: 'And the price? How much is it?'
+    } : {
+        convo: 'post.photo',
+        text: 'Send some photos and finally send the command /end when you\'re done.'
+    }
     let messageId = ctx.update.message.message_id
     let description = escapeHTML(ctx.message.text)
     let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
-    let message = await ctx.reply('And the price? How much is it?')
+    let message = await ctx.reply(next.text)
     let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
-    await ctx.people.set(username, {draft_description: description, conversation: 'post.price', removed_message_ids: newRemoved})
+    await ctx.people.set(username, {draft_description: description, conversation: next.convo, removed_message_ids: newRemoved})
 }
 
 async function handlePriceStage(ctx) {
