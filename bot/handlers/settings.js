@@ -45,7 +45,7 @@ const settingSpectficParams = {
                 .replace(/:title\b/, '<b>:title</b>')
                 .replace(/:description\b/, '<b>:description</b>')
                 .replace(/:price\b/, '<b>:price</b>')
-            let text = '<i>You will be changing the caption template for</i> @' + channel + ', <i>here is the current template, you can edit anything except</i> <b>:title</b>, <b>:description</b> <i>and</i> <b>:price</b>. <i>Those are placeholders for the posts.</i>\n\n' + currentTemplate
+            let text = '<i>You will be changing the caption template for</i> @' + channel + ', <i>here is the current template, placeholders are </i> <b>:title</b> <i>(optional)</i>, <b>:description</b> <i>(required) and</i> <b>:price</b> <i>(optional). If you omit the optional ones, you won\'t be asked for them when you post.</i>\n\n' + currentTemplate
             return {text}
         }
     },
@@ -160,13 +160,13 @@ async function handleSettingTextContactText(ctx) {
 async function handleSettingTextCaptionTempl(ctx) {
     let username = ctx.from.username
     let text = escapeHTML(ctx.update.message.text)
-    if (/:title\b/.test(text) && /:description\b/.test(text) && /:price/.test(text)) {
+    if (/:description\b/.test(text)) {
         let channel = await ctx.people.get(username, 'to_update')
         ctx.channels.set(channel, {caption_template: text})
         ctx.people.set(username, {conversation: null})
         ctx.reply('@' + channel + "'s caption template has been updated. This change will take effect from the next post on.")
     } else {
-        ctx.reply('You have to include the above three elements, try again.')
+        ctx.reply('You have to include at least :description, try again.')
     }
 }
 
