@@ -207,7 +207,7 @@ async function handlePostDraft(ctx) {
     let adminData = await ctx.people.getDraft(username)
     if (adminData) {
         let channel = adminData.destination
-        let message = await ctx.telegram.sendPhoto('@' + channel, adminData.images.collage, {caption: adminData.caption})
+        let message = await ctx.telegram.sendPhoto('@' + channel, adminData.images.collage, {caption: adminData.caption, parse_mode: 'html'})
         let postId = message.message_id
         let startUrl = 'https://t.me/' + ctx.botInfo.username + '?start=' + channel + '-' + postId
         ctx.telegram.editMessageReplyMarkup('@' + channel, postId, undefined, {
@@ -276,8 +276,7 @@ async function handleDetails(ctx) {  // details callback
             images = images.map(img => {return {type: 'photo', media: img}})
             // put the caption on the last one
             images[images.length - 1].caption = messageDetails.caption
-            ctx.replyWithMediaGroup(images, {
-            })
+            ctx.replyWithMediaGroup(images, {parse_mode: 'html'})
         } else if (messageDetails.state === 'sold') {
             ctx.reply('Sorry, item already sold.')
         } else if (messageDetails.state === 'deleted') {
@@ -299,15 +298,22 @@ async function handleEditCaption(ctx) {
         ctx.reply('Your license for this channel has expired. Contact @' + ctx.admins + ' for renewal.')
         return
     }
-    let postExists = await ctx.posts.exists({channel, message_id: postId})
-    if (postExists) {
+    let post = await ctx.posts.get({channel, message_id: postId})
+    if (post) {
         let messageId = ctx.update.callback_query.message.message_id
-        let images = await ctx.posts.get({channel, message_id: postId}, 'image_ids')
+        let images = post.image_ids
         let postUrl = 'https://t.me/' + messageIdDb
-        let text = 'Editting <a href="' + postUrl + '">this post</a>, write the new title. You can send <b>skip</b> To keep the existing title.'
+        let next = post.title ? {
+            convo: 'edit.title',
+            text: 'write the new title. You can send <b>skip</b> To keep the existing title.'
+        } : {
+            convo: 'edit.description',
+            text: 'send the new description. If you don\'t want to change it, send <b>skip</b>.'
+        }
+        let text = 'Editting <a href="' + postUrl + '">this post</a>, ' + next.text
         let message = await ctx.reply(text, {parse_mode: 'html', disable_web_page_preview: true})
         ctx.people.set(username, {
-            conversation: 'edit.title',
+            conversation: next.convo,
             to_update: messageIdDb,
             removed_message_ids: JSON.stringify([messageId, message.message_id]),
             draft_image_ids: images
@@ -339,18 +345,39 @@ async function handleEditDescription(ctx) {
     let username = ctx.from.username
     let messageId = ctx.update.message.message_id
     let text = ctx.update.message.text
-    let postDescription
+    let destination = await ctx.people.get(username, 'to_update')
+    let [channel, message_id] = destination.split('/')
+    let post
     if (text.toLowerCase() === 'skip') {
-        let destination = await ctx.people.get(username, 'to_update')
-        let [channel, message_id] = destination.split('/')
-        postDescription = await ctx.posts.get({channel, message_id}, 'description')
+        post = await ctx.posts.get({channel, message_id}, ['description', 'price'])
     } else {
-        postDescription = escapeHTML(text)
+        post = {
+            description: escapeHTML(text),
+            price: await ctx.posts.get({channel, message_id}, 'price')
+        }
     }
-    let message = await ctx.reply('Send the new price. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
-    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
-    let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
-    ctx.people.set(username, {draft_description: postDescription, conversation: 'edit.price', removed_message_ids: newRemoved})
+    if (post.price) {
+        let message = await ctx.reply('Send the new price. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
+        let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
+        let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
+        ctx.people.set(username, {draft_description: post.description, conversation: 'edit.price', removed_message_ids: newRemoved})
+    } else {
+        let adminData = await ctx.people.getDraft(username, 'edit')
+        let collage = adminData.images.collage
+        let caption = '<i>The new caption will look like this...</i>\n\n' + adminData.caption
+        ctx.replyWithPhoto(collage, {
+            parse_mode: 'html',
+            caption,
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {text: 'Save changes', callback_data: 'edit_after:save'},
+                        {text: 'Discard', callback_data: 'edit_after:discard'}
+                    ]
+                ]
+            }
+        })
+    }
 }
 
 async function handleEditPrice(ctx) {
