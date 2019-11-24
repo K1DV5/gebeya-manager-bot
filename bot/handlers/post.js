@@ -60,7 +60,7 @@ async function handleChannelStage(ctx) {
         let text = 'You will be posting to @' + channel + '. ' + next.text
         ctx.telegram.editMessageText(chatId, messageId, undefined, text)
     } else {
-        let message = await ctx.reply('You will be posting to @' + channel + next.text)
+        let message = await ctx.reply('You will be posting to @' + channel + '. ' + next.text)
         await ctx.people.set(username, {
             to_update: channel,
             conversation: next.convo,
@@ -179,7 +179,9 @@ async function handlePhotoStageEnd(ctx) {
     let caption = (await ctx.people.getDraft(username)).caption
     let postPreview = await ctx.replyWithPhoto(
         {source: fs.createReadStream(draftCollage)}, {
-        caption, reply_markup: {
+            caption,
+            parse_mode: 'html',
+            reply_markup: {
             inline_keyboard: [
                 [
                     {text: 'Post', callback_data: 'post:' + username},

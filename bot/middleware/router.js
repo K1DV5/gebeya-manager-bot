@@ -173,7 +173,7 @@ async function customerRoute(ctx) {
             if (handler) {
                 await handler(ctx)
             } else {
-                ctx.reply('You are not an admin of any channel here, you can\'t use that.')
+                ctx.reply(ctx.fallbackReply)
             }
         } else if (/hi|hello/.test(text.toLowerCase())) {
             ctx.reply('Hi, maybe you need /help.')

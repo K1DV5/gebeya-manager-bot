@@ -40,7 +40,7 @@ class people extends BaseModel {
                             ON c.username = p.to_update
                          WHERE p.username = ?`
             let result = (await this.sql(query, [username]))[0]
-            let incomplete = [result.title, result.description, result.price].some(data => data === null)
+            let incomplete = result.description === null
             if (!incomplete) {
                 adminData = result
             }
@@ -57,7 +57,7 @@ class people extends BaseModel {
                                 conversation AS stage
                          FROM people WHERE username = ?`
             let result = (await this.sql(query, [username]))[0]
-            let incomplete = [result.title, result.description, result.price].some(data => data === null)
+            let incomplete = result.description === null
             if (!incomplete) {
                 adminData = result
                 adminData.template = channelData.caption_template
@@ -90,6 +90,7 @@ class people extends BaseModel {
     clearDraft(username) {
         this.sql(`UPDATE people SET draft_title = NULL,
                                     draft_description = NULL,
+                                    draft_price = NULL,
                                     to_update = NULL,
                                     draft_image_ids = NULL,
                                     removed_message_ids = NULL,
@@ -161,5 +162,6 @@ class people extends BaseModel {
 // p.getChannels('K1DV5',null,'permitted').then(console.log)
 // p.get('K1DV5', 'removed_message_ids').then(console.log)
 // p.getAll('chat_id').then(console.log)
+// p.getDraft('K1DV5').then(console.log)
 
 module.exports = people
