@@ -20,6 +20,44 @@ function makeKeyboardTiles(buttons, cols=2) {
     return keyboardRows
 }
 
+/**
+ * creates a caption for the posts
+ * @param data {object} the caption data
+ * @param data.title {string} the title
+ * @param data.description {string} the description
+ * @param data.price {string} the price
+ * @param data.bullet {string} the bullet chars for the description
+ * @param template {string} the caption template
+ * @param bullets {boolean} whether to use lines starting with . as bullet lines
+ */
+function makeCaption(data, template, bullets=false) {
+    let caption = template.replace(/:title\b/, '<b>' + data.title + '</b>')
+                          .replace(/:price\b/, '<code>' + data.price + '</code>')
+    if (bullets) { // use bullets for every line without .
+        caption = caption.replace(/:description\b/, data.description
+                                                        .replace(/^(?=[^.])/gm, data.bullet + ' ')
+                                                        .replace(/^\./gm, '')
+                                 )
+    } else { // use bullets for lines beginning with .
+        caption = caption.replace(/:description\b/, data.description.replace(/^\./gm, data.bullet + ' '))
+    }
+    return caption
+}
+
+/**
+ * creates the hidden text for the post
+ * @param data {object} the caption data
+ * @param data.author {string} the author
+ * @param data.price {string} the price
+ * @param template {string} the template
+ */
+function makeInnerText(data, template) {
+    let text = template
+        .replace(/:author\b/, '@' + data.author)
+        .replace(/:price\b/, '<code>' + data.price + '</code>')
+    return text
+}
+
 function argparse(from) {
     // find values of parameters written like cli args: /command -p param /// but spaces are allowed.
     let paramsSection = from[0] === '/'? from.split(' ').slice(1) : from.trim().split(' ')
@@ -192,6 +230,8 @@ function escapeHTML(text) {
 module.exports = {
     argparse,
     makeCollage,
+    makeCaption,
+    makeInnerText,
     watermarkDir,
     downloadFile,
     rmdirWithFiles,
