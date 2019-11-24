@@ -346,6 +346,7 @@ async function handleEditTitle(ctx) {
 async function handleEditDescription(ctx) {
     let username = ctx.from.username
     let messageId = ctx.update.message.message_id
+    let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
     let text = ctx.update.message.text
     let destination = await ctx.people.get(username, 'to_update')
     let [channel, message_id] = destination.split('/')
@@ -355,13 +356,14 @@ async function handleEditDescription(ctx) {
     } else {
         description = escapeHTML(text)
     }
-    let template = await ctx.changes.get(channel, 'caption_template')
+    let template = await ctx.channels.get(channel, 'caption_template')
     if (/:price\b/.test(template)) {
         let message = await ctx.reply('Send the new price. If you don\'t want to change it, send <b>skip</b>.', {parse_mode: 'html'})
-        let removed = JSON.parse(await ctx.people.get(username, 'removed_message_ids'))
         let newRemoved = JSON.stringify([...removed, message.message_id, messageId])
         ctx.people.set(username, {draft_description: description, conversation: 'edit.price', removed_message_ids: newRemoved})
     } else {
+        let newRemoved = JSON.stringify([...removed, messageId])
+        await ctx.people.set(username, {draft_description: description, conversation: 'edit.ready', removed_message_ids: newRemoved})
         let adminData = await ctx.people.getDraft(username, 'edit')
         let collage = adminData.images.collage
         let caption = '<i>The new caption will look like this...</i>\n\n' + adminData.caption

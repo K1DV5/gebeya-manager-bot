@@ -45,9 +45,6 @@ class people extends BaseModel {
                 adminData = result
             }
         } else if (purpose === 'edit') { // for the edit caption functionality
-            // get the channel's caption template
-            let channel = (await this.sql('SELECT to_update FROM people WHERE username = ?', [username]))[0].to_update.split('/')[0]
-            let channelData = (await this.sql('SELECT caption_template, description_bullet, description_is_bullet FROM channels WHERE username = ?', [channel]))[0]
             let query = `SELECT to_update as destination,
                                 draft_title AS title,
                                 draft_description AS description,
@@ -60,6 +57,9 @@ class people extends BaseModel {
             let incomplete = result.description === null
             if (!incomplete) {
                 adminData = result
+                // get the channel's caption template
+                let channel = result.destination.split('/')[0]
+                let channelData = (await this.sql('SELECT caption_template, description_bullet, description_is_bullet FROM channels WHERE username = ?', [channel]))[0]
                 adminData.template = channelData.caption_template
                 adminData.bullet = channelData.description_bullet
                 adminData.useBullets = channelData.description_is_bullet
@@ -162,6 +162,6 @@ class people extends BaseModel {
 // p.getChannels('K1DV5',null,'permitted').then(console.log)
 // p.get('K1DV5', 'removed_message_ids').then(console.log)
 // p.getAll('chat_id').then(console.log)
-// p.getDraft('K1DV5').then(console.log)
+// p.getDraft('K1DV5', 'edit').then(console.log)
 
 module.exports = people
