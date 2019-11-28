@@ -39,7 +39,14 @@ const commandHandlers = {
 }
 
 const customerCommandHandlers = {
-    '/start': start.handleCustomerStart,
+    '/start': ctx => {
+        // show item details
+        if (ctx.state.payload) {
+            start.handleStart(ctx)
+        } else {
+            start.handleCustomerStart(ctx)
+        }
+    },
     '/help': help.handleCustomerHelp,
     '/register': help.handleRegisterHelp
 }
