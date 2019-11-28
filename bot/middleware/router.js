@@ -223,7 +223,7 @@ async function router(ctx) {
     // some updates aren't from a person, like channel post editted...
     if (!ctx.from) return 1
 
-    let username = ctx.from.username
+    let username = ctx.from.username || '[customer]' // some string that doesnt exist in the db
     ctx.state.isChannelAdmin = await ctx.people.exists(username)
     if (ctx.state.isChannelAdmin) {
         // conversation independent ----------------------------------------------
