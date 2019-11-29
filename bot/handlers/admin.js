@@ -11,9 +11,9 @@ async function handleAdminAdd(ctx) {
     if (args.p === '1221') {
         if (args.u && args.c && args.e) {
             // ensure already registered is not modified unknowingly
-            let existingAdnin = await ctx.channels.get(args.c, 'admin')
-            if (existingAdnin && existingAdnin !== args.u && !args.f) {
-                ctx.reply('The channel @' + args.c + ' already has another admin, @' + existingAdnin + '. Add -f to override.')
+            let existingAdmin = await ctx.channels.get(args.c, 'admin')
+            if (existingAdmin && existingAdmin !== args.u && !args.f) {
+                ctx.reply('The channel @' + args.c + ' already has another admin, @' + existingAdmin + '. Add -f to override.')
                 return
             }
             let admins
@@ -42,7 +42,9 @@ async function handleAdminAdd(ctx) {
                 return
             }
             await ctx.people.insert({ username: args.u })
-            let licenseExpiry = new Date(args.e)
+            let daysMatch = args.e.match(/^(\d+) day(?:s?)$/)
+            let now = ctx.update.message.date
+            let licenseExpiry = daysMatch ? new Date((daysMatch[1] * 3600*24 + now) * 1000) : new Date(args.e)
             await ctx.channels.insert({
                 username: args.c,
                 admin: args.u,
@@ -52,8 +54,8 @@ async function handleAdminAdd(ctx) {
             await ctx.channels.updatePermissions(args.c, admins, ctx.botInfo.username)
 
             let startLink = `<a href="https://t.me/${ctx.botInfo.username}?start=${startParam}">Talk to @${ctx.botInfo.username} to start using it.</a>`
-            let did = existingAdnin ? 'updated' : 'added'
-            ctx.replyWithHTML(`Channel @${args.c} by @${args.u} ${did}, license expiring on ${licenseExpiry.toString()}. ` + startLink)
+            let did = existingAdmin ? 'updated' : 'added'
+            ctx.replyWithHTML(`Channel @${args.c} by @${args.u} ${did}, license expiring on ${licenseExpiry.toString()}. ` + startLink, {disable_web_page_preview: true})
 
         } else {
             await ctx.reply('Necessary arguments not given: -u, -c, -e, -p, [-f]')
