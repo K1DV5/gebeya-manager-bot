@@ -42,7 +42,9 @@ async function handleAdminAdd(ctx) {
                 return
             }
             await ctx.people.insert({ username: args.u })
-            let licenseExpiry = new Date(args.e)
+            let daysMatch = args.e.match(/^(\d+) day(?:s?)$/)
+            let now = ctx.update.message.date
+            let licenseExpiry = daysMatch ? new Date((daysMatch[1] * 3600*24 + now) * 1000) : new Date(args.e)
             await ctx.channels.insert({
                 username: args.c,
                 admin: args.u,
