@@ -218,7 +218,7 @@ async function notifyBuy(ctx, channel, postId, data) {
     let interestedText = '\n\nInterested customers are:\n' + data.customers.map(cust => '\u2022 <a href="tg://user?id=' + cust.id + '">' + cust.name + '</a>').join('\n')
     // to the customer
     let contactText = await ctx.channels.get(channel, 'contact_text')
-    let caption = '<i>You have selected</i> ' + itemLink + ' <i>from</i> @' + channel + '. THE SELLER HAS BEEN NOTIFIED that you want to buy this item. You can contact them or they can contact you.\n\n' + data.caption + '\n\n' + contactText
+    let caption = '<i>You have selected</i> ' + itemLink + ' <i>from</i> @' + channel + '. <i>THE SELLER HAS BEEN NOTIFIED that you want to buy this item. You can contact them or they can contact you.</i>\n\n' + data.caption + '\n\n' + contactText
     // to the customer
     ctx.replyWithPhoto(data.image, {
         caption,
