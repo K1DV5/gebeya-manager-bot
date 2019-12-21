@@ -55,7 +55,7 @@ const adminCommandHandlers = {
     '/adminadd': admin.handleAdminAdd,
     '/adminall': admin.handleAdminAll,
     '/version': ctx => {
-        ctx.reply('1.0.1')
+        ctx.reply('1.0.2')
     }
 }
 

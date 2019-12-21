@@ -478,7 +478,7 @@ async function handleSold(ctx) {
         let soldTemplate = await ctx.channels.get(channel, 'sold_template')
         let soldText = soldTemplate.replace(/:caption\b/, post.caption)
         try { // for when trying to edit with same content
-            await ctx.telegram.editMessageCaption('@' + channel, messageId, undefined, soldText)
+            await ctx.telegram.editMessageCaption('@' + channel, messageId, undefined, soldText, {reply_markup: 'html'})
         } catch {
             // for when called from the handleDeletePost
             ctx.state.editFail = true
